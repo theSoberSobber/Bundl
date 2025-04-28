@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Orvio</string>
+    <string name="login_title">Phone number</string>
+    <string name="login_subtitle">We use phone number authentication to prevent abuse, sorry for any inconvenience 🙏</string>
+    <string name="enter_phone_hint">Enter phone number</string>
+    <string name="continue_button">Continue</string>
+    <string name="sending">Sending…</string>
+    <string name="otp_title">Enter OTP</string>
+    <string name="otp_subtitle">An OTP has been sent to your phone number</string>
+    <string name="resend_code">Resend Code</string>
+    <string name="verify">Verify</string>
+    <string name="home_tab">Home</string>
+    <string name="api_keys_tab">API Keys</string>
+    <string name="device_registered">Device registered!</string>
+    <string name="registering_device">Registering device…</string>
+    <string name="registration_failed">Registration failed</string>
+    <string name="try_again_later">Please try again later</string>
+    <string name="invalid_phone">Invalid phone number</string>
+    <string name="enter_valid_phone">Please enter a valid 10-digit number.</string>
+</resources> 
