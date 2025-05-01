@@ -25,7 +25,8 @@ import com.orvio.app.R
 @Composable
 fun DashboardScreen(
     onLogout: () -> Unit,
-    viewModel: DashboardViewModel = hiltViewModel()
+    viewModel: DashboardViewModel = hiltViewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(0) }
     
@@ -56,6 +57,7 @@ fun DashboardScreen(
         when (selectedTab) {
             0 -> HomeTab(
                 modifier = Modifier.padding(innerPadding),
+                viewModel = homeViewModel,
                 onLogout = onLogout
             )
             1 -> ApiKeysTab(

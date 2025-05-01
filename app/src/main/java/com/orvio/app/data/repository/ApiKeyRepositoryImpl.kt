@@ -7,6 +7,7 @@ import com.orvio.app.data.remote.dto.OtpSendRequestDto
 import com.orvio.app.data.remote.dto.OtpVerifyRequestDto
 import com.orvio.app.domain.model.ApiKey
 import com.orvio.app.domain.repository.ApiKeyRepository
+import com.orvio.app.utils.DeviceUtils
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.*
@@ -14,7 +15,8 @@ import java.util.*
 @Singleton
 class ApiKeyRepositoryImpl @Inject constructor(
     private val apiKeyService: ApiKeyService,
-    private val authApiService: AuthApiService
+    private val authApiService: AuthApiService,
+    private val deviceUtils: DeviceUtils
 ) : ApiKeyRepository {
     
     override suspend fun getApiKeys(): Result<List<ApiKey>> {
@@ -42,9 +44,9 @@ class ApiKeyRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun deleteApiKey(id: String): Result<Boolean> {
+    override suspend fun deleteApiKey(key: String): Result<Boolean> {
         return try {
-            val request = mapOf("apiKey" to id)
+            val request = mapOf("apiKey" to key)
             apiKeyService.revokeApiKey(request)
             Result.success(true)
         } catch (e: Exception) {
@@ -65,7 +67,8 @@ class ApiKeyRepositoryImpl @Inject constructor(
     
     override suspend fun registerDevice(deviceHash: String, fcmToken: String): Result<Boolean> {
         return try {
-            authApiService.registerDevice(DeviceRegisterRequestDto(deviceHash, fcmToken))
+            val phoneNumber = deviceUtils.getPhoneNumber() ?: throw Exception("Phone number not available")
+            authApiService.registerDevice(DeviceRegisterRequestDto(fcmToken, phoneNumber))
             Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)

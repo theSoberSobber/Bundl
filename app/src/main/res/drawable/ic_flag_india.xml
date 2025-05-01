@@ -1,19 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:height="16dp"
+    android:viewportWidth="900"
+    android:viewportHeight="600">
+
+    <!-- Flag background and stripes -->
     <path
         android:fillColor="#FF9933"
-        android:pathData="M3,5h18v4.66H3z" />
+        android:pathData="M0,0h900v200h-900z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M3,9.66h18v4.68H3z" />
+        android:pathData="M0,200h900v200h-900z" />
     <path
         android:fillColor="#138808"
-        android:pathData="M3,14.34h18V19H3z" />
+        android:pathData="M0,400h900v200h-900z" />
+
+    <!-- Ashoka Chakra circle -->
     <path
         android:fillColor="#000080"
-        android:pathData="M12,12m-1.33,0a1.33,1.33 0,1 1,2.66 0a1.33,1.33 0,1 1,-2.66 0" />
+        android:pathData="M450,300a50,50 0 1,0 0.1,0z" />
+
+    <!-- Ashoka Chakra spokes (24) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L450,250" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L475,255" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L495,270" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L500,300" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L495,330" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L475,345" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L450,350" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L425,345" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L405,330" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L400,300" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L405,270" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M450,300L425,255" />
 </vector> 

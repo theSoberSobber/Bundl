@@ -16,47 +16,53 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
 object PermissionHandler {
-    // Keep the array for future extensibility
-    private val requiredPermissions = mutableStateListOf(
+    val phonePermissions = arrayOf(
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.READ_PHONE_NUMBERS
+    )
+
+    val smsPermissions = arrayOf(
         Manifest.permission.SEND_SMS
     )
 
-    fun hasPermission(context: Context, permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            permission
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    fun getMissingPermissions(context: Context): List<String> {
-        return requiredPermissions.filter { !hasPermission(context, it) }
-    }
-
     @Composable
     fun RequestPermissions(
-        onAllPermissionsGranted: () -> Unit = {},
-        onPermissionDenied: (String) -> Unit = {}
+        permissions: Array<String>,
+        onAllPermissionsGranted: () -> Unit,
+        onPermissionDenied: (String) -> Unit
     ) {
         val context = LocalContext.current
-        var missingPermissions by remember { mutableStateOf(getMissingPermissions(context)) }
+        var requestPermissions by remember { mutableStateOf(false) }
 
-        val permissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                missingPermissions = getMissingPermissions(context)
-                if (missingPermissions.isEmpty()) {
-                    onAllPermissionsGranted()
-                }
+        val launcher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { results ->
+            val deniedPermissions = results.filter { !it.value }.keys
+            if (deniedPermissions.isEmpty()) {
+                onAllPermissionsGranted()
             } else {
-                onPermissionDenied(missingPermissions.first())
+                deniedPermissions.firstOrNull()?.let { onPermissionDenied(it) }
             }
         }
 
-        LaunchedEffect(missingPermissions) {
-            if (missingPermissions.isNotEmpty()) {
-                permissionLauncher.launch(missingPermissions.first())
+        LaunchedEffect(requestPermissions) {
+            if (requestPermissions) {
+                val missingPermissions = permissions.filter {
+                    ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (missingPermissions.isNotEmpty()) {
+                    launcher.launch(missingPermissions.toTypedArray())
+                } else {
+                    onAllPermissionsGranted()
+                }
+                requestPermissions = false
             }
+        }
+    }
+
+    fun hasPermissions(context: Context, permissions: Array<String>): Boolean {
+        return permissions.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
     }
 } 

@@ -36,16 +36,19 @@ import com.orvio.app.R
 @Composable
 fun HomeTab(
     modifier: Modifier = Modifier,
-    onLogout: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val fcmToken by viewModel.fcmToken.collectAsState()
+    val isRegistered by viewModel.isRegistered.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     
-    // Show FCM token in toast when it's available
-    LaunchedEffect(fcmToken) {
-        fcmToken?.let {
-            Toast.makeText(context, "FCM Token: $it", Toast.LENGTH_LONG).show()
+    // Show error toast if there's an error
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
         }
     }
 
@@ -74,8 +77,8 @@ fun HomeTab(
         ) {
             WelcomeCard()
             
-            // You can add more cards or components here as needed
-            StatsCard()
+            // Stats card showing registration status
+            StatsCard(isRegistered = isRegistered)
         }
     }
 }
@@ -107,7 +110,7 @@ fun WelcomeCard() {
 }
 
 @Composable
-fun StatsCard() {
+fun StatsCard(isRegistered: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
@@ -130,7 +133,7 @@ fun StatsCard() {
             ) {
                 StatItem(
                     title = "Device",
-                    value = "Registered",
+                    value = if (isRegistered) "Registered" else "Registering...",
                     modifier = Modifier.weight(1f)
                 )
                 

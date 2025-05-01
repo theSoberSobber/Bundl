@@ -38,9 +38,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.orvio.app.R
 import com.orvio.app.presentation.theme.Blue
+import com.orvio.app.utils.DeviceUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
 @Composable
 fun LoginScreen(
@@ -52,6 +56,17 @@ fun LoginScreen(
     val error by viewModel.errorMessage.collectAsState()
     
     var phoneNumber by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        val devicePhoneNumber = viewModel.getDevicePhoneNumber()
+        if (devicePhoneNumber.isNotEmpty()) {
+            phoneNumber = devicePhoneNumber
+        } else {
+            showError = true
+            viewModel.showError("Unable to read phone number from device. Please check app permissions.")
+        }
+    }
     
     LaunchedEffect(error) {
         error?.let {
@@ -105,11 +120,11 @@ fun LoginScreen(
                     modifier = Modifier.padding(end = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Indian flag icon would be here
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_flag_india),
-                        contentDescription = "Indian flag",
-                        modifier = Modifier.size(24.dp)
+                    // Use flag emoji instead of vector drawable
+                    Text(
+                        text = "🇮🇳",
+                        fontSize = 20.sp,
+                        modifier = Modifier.padding(end = 4.dp)
                     )
                 }
                 
@@ -121,14 +136,15 @@ fun LoginScreen(
                 
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = { 
-                        if (it.length <= 10 && it.all { char -> char.isDigit() }) {
-                            phoneNumber = it 
-                        }
-                    },
+                    onValueChange = { },
                     placeholder = { Text(stringResource(R.string.enter_phone_hint)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     singleLine = true,
+                    enabled = false,
+                    isError = showError,
+                    supportingText = if (showError) {
+                        { Text("Phone number could not be read") }
+                    } else null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
@@ -144,7 +160,7 @@ fun LoginScreen(
                             onNavigateToOtp(transactionId, "+91$phoneNumber")
                         }
                     } else {
-                        // Show error for invalid phone
+                        viewModel.showError("Unable to read phone number from device")
                     }
                 },
                 modifier = Modifier

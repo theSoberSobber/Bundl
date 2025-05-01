@@ -3,6 +3,7 @@ package com.orvio.app.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.orvio.app.domain.repository.AuthRepository
+import com.orvio.app.utils.DeviceUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val deviceUtils: DeviceUtils
 ) : ViewModel() {
     
     private val _isLoading = MutableStateFlow(false)
@@ -23,6 +25,14 @@ class AuthViewModel @Inject constructor(
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
     
     val isLoggedIn = authRepository.isLoggedIn()
+    
+    fun getDevicePhoneNumber(): String {
+        return deviceUtils.getPhoneNumber() ?: ""
+    }
+    
+    fun showError(message: String) {
+        _errorMessage.value = message
+    }
     
     fun sendOtp(phoneNumber: String, onSuccess: (String) -> Unit) {
         viewModelScope.launch {

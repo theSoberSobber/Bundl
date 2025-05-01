@@ -53,6 +53,11 @@ import com.orvio.app.R
 import com.orvio.app.domain.model.ApiKey
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.layout.imePadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +69,8 @@ fun ApiKeysTab(
     val apiKeys by viewModel.apiKeys.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.errorMessage.collectAsState()
+    val success by viewModel.successMessage.collectAsState()
+    val context = LocalContext.current
     
     var showCreateDialog by remember { mutableStateOf(false) }
     var showTestDialog by remember { mutableStateOf(false) }
@@ -73,6 +80,13 @@ fun ApiKeysTab(
         error?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
+        }
+    }
+    
+    LaunchedEffect(success) {
+        success?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearSuccess()
         }
     }
     
@@ -124,7 +138,7 @@ fun ApiKeysTab(
                                 showTestDialog = true
                             },
                             onDeleteClick = {
-                                viewModel.deleteApiKey(apiKey.id)
+                                viewModel.deleteApiKey(apiKey.key, apiKey.name)
                             }
                         )
                     }
@@ -194,6 +208,7 @@ fun ApiKeyCard(
                 )
                 
                 Row {
+                    // Copy button
                     IconButton(
                         onClick = {
                             clipboardManager.setText(AnnotatedString(apiKey.key))
@@ -207,6 +222,7 @@ fun ApiKeyCard(
                         )
                     }
                     
+                    // Test button
                     IconButton(
                         onClick = onTestClick,
                         modifier = Modifier.size(32.dp)
@@ -217,6 +233,7 @@ fun ApiKeyCard(
                         )
                     }
                     
+                    // Delete button
                     IconButton(
                         onClick = onDeleteClick,
                         modifier = Modifier.size(32.dp)
@@ -284,7 +301,20 @@ fun CreateApiKeyDialog(
                     onValueChange = { apiKeyName = it },
                     label = { Text("API Key Name") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .imePadding(),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done,
+                        keyboardType = KeyboardType.Text
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (apiKeyName.isNotBlank()) {
+                                onCreateClick(apiKeyName)
+                            }
+                        }
+                    )
                 )
             }
         },

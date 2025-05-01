@@ -29,6 +29,9 @@ class DashboardViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
     
+    private val _successMessage = MutableStateFlow<String?>(null)
+    val successMessage: StateFlow<String?> = _successMessage.asStateFlow()
+    
     private val _isTestingKey = MutableStateFlow(false)
     val isTestingKey: StateFlow<Boolean> = _isTestingKey.asStateFlow()
     
@@ -36,7 +39,6 @@ class DashboardViewModel @Inject constructor(
     val testResult: StateFlow<Boolean?> = _testResult.asStateFlow()
     
     init {
-        registerDevice()
         loadApiKeys()
     }
     
@@ -71,6 +73,7 @@ class DashboardViewModel @Inject constructor(
                 apiKeyRepository.createApiKey(name).fold(
                     onSuccess = { newKey ->
                         loadApiKeys() // Reload keys to include the new one
+                        _successMessage.value = "API key '${name}' created successfully"
                         onSuccess()
                     },
                     onFailure = { throwable ->
@@ -85,16 +88,17 @@ class DashboardViewModel @Inject constructor(
         }
     }
     
-    fun deleteApiKey(id: String) {
+    fun deleteApiKey(key: String, keyName: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             
             try {
-                apiKeyRepository.deleteApiKey(id).fold(
+                apiKeyRepository.deleteApiKey(key).fold(
                     onSuccess = { _ ->
                         // Remove the key from the local list to update UI immediately
-                        _apiKeys.value = _apiKeys.value.filter { it.id != id }
+                        _apiKeys.value = _apiKeys.value.filter { it.key != key }
+                        _successMessage.value = "API key '${keyName}' deleted successfully"
                     },
                     onFailure = { throwable ->
                         _errorMessage.value = throwable.message ?: "Failed to delete API key"
@@ -133,21 +137,12 @@ class DashboardViewModel @Inject constructor(
         }
     }
     
-    private fun registerDevice() {
-        viewModelScope.launch {
-            try {
-                val deviceHash = deviceUtils.getDeviceHash()
-                val fcmToken = FirebaseMessaging.getInstance().token.await()
-                
-                apiKeyRepository.registerDevice(deviceHash, fcmToken)
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to register device: ${e.message}"
-            }
-        }
-    }
-    
     fun clearError() {
         _errorMessage.value = null
+    }
+    
+    fun clearSuccess() {
+        _successMessage.value = null
     }
     
     fun clearTestResult() {
