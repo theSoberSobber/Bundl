@@ -69,7 +69,7 @@ jobs:
       - name: Upload APK to APK Manager
         run: |
           echo "Uploading APK to APK Manager..."
-          curl -X POST \
-            -H "X-Secret-Key: ${{ secrets.APK_MANAGER_SECRET_KEY }}" \
+          curl -v -X POST \
+            -H "X-Secret-Key: orvio-secret-key-change-in-production" \
             -F "file=@app/build/outputs/apk/release/Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk" \
             https://apkmanager.1110777.xyz/orvio/upload 
