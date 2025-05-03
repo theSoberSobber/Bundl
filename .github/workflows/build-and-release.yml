@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew assembleRelease
       
       - name: Upload APK to artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: app-release
           path: app/build/outputs/apk/release/app-release.apk
@@ -53,14 +53,25 @@ jobs:
               prerelease: false,
               generate_release_notes: true
             });
-            return data.upload_url;
+            return data.id;
       
       - name: Upload Release APK
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v6
         with:
-          upload_url: ${{ steps.create_release.outputs.result }}
-          asset_path: app/build/outputs/apk/release/app-release.apk
-          asset_name: Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk
-          asset_content_type: application/vnd.android.package-archive 
+          script: |
+            const fs = require('fs');
+            
+            const apkPath = 'app/build/outputs/apk/release/app-release.apk';
+            const apkName = `Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk`;
+            
+            console.log(`Uploading ${apkPath} as ${apkName}...`);
+            
+            const apkData = fs.readFileSync(apkPath);
+            
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ steps.create_release.outputs.result }},
+              name: apkName,
+              data: apkData
+            }); 
