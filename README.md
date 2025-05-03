@@ -70,3 +70,24 @@ app/
 ## API Connection
 
 The app connects to the Orvio backend API at `https://backend-orvio.1110777.xyz` for authentication, API key management, and device registration. 
+
+# GitHub Actions Workflow Setup
+
+To enable automatic APK builds and uploads to the APK Manager, you need to set the following GitHub secrets:
+
+1. Go to your GitHub repository settings
+2. Navigate to Secrets and Variables > Actions
+3. Add the following secrets:
+   - `APK_MANAGER_SECRET_KEY`: The secret key for authenticating with the APK Manager (default: "orvio-secret-key-change-in-production")
+
+The workflow will:
+1. Build a release APK on every push
+2. Create a GitHub release with the APK
+3. Upload the APK to the APK Manager at https://apkmanager.1110777.xyz
+
+## Download the latest APK
+
+Users can always download the latest version of the app from:
+https://apkmanager.1110777.xyz/orvio/latest.apk
+
+This link is already configured in the website's download buttons. 
