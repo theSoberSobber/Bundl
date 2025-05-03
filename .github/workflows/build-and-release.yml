@@ -1,0 +1,66 @@
+name: Build and Release APK
+
+on:
+  push:
+    # Run on any branch push
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: gradle
+      
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+      
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+      
+      - name: Generate version name
+        id: version
+        run: echo "VERSION_NAME=$(date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+      
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+      
+      - name: Upload APK to artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${{ steps.version.outputs.VERSION_NAME }}`,
+              name: `Orvio v${{ steps.version.outputs.VERSION_NAME }}`,
+              body: `Automated build - ${new Date().toISOString()}`,
+              draft: false,
+              prerelease: false,
+              generate_release_notes: true
+            });
+            return data.upload_url;
+      
+      - name: Upload Release APK
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.result }}
+          asset_path: app/build/outputs/apk/release/app-release.apk
+          asset_name: Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk
+          asset_content_type: application/vnd.android.package-archive 

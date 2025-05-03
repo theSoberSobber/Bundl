@@ -69,4 +69,4 @@ app/
 
 ## API Connection
 
-The app connects to the Orvio backend API at `https://backend-orvio.pavit.xyz` for authentication, API key management, and device registration. 
+The app connects to the Orvio backend API at `https://backend-orvio.1110777.xyz` for authentication, API key management, and device registration. 
