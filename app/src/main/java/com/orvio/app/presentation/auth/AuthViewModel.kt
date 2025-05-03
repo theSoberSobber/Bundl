@@ -8,8 +8,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import android.util.Log
 import javax.inject.Inject
 
 @HiltViewModel
@@ -17,6 +17,10 @@ class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val deviceUtils: DeviceUtils
 ) : ViewModel() {
+    
+    companion object {
+        private const val TAG = "AuthViewModel"
+    }
     
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -80,7 +84,15 @@ class AuthViewModel @Inject constructor(
     
     fun logout() {
         viewModelScope.launch {
-            authRepository.clearAuthTokens()
+            try {
+                // Call the repository's logout method which handles
+                // FCM token deletion and token clearing
+                Log.d(TAG, "Initiating logout")
+                authRepository.logout()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during logout", e)
+                _errorMessage.value = "Failed to sign out: ${e.message}"
+            }
         }
     }
     

@@ -65,6 +65,17 @@ class ApiKeyRepositoryImpl @Inject constructor(
         }
     }
     
+    override suspend fun testApiKey(key: String, phoneNumber: String): Result<Boolean> {
+        return try {
+            // Test sending OTP with user-provided phone number
+            val sendOtpRequest = OtpSendRequestDto(phoneNumber)
+            apiKeyService.serviceSendOtp(sendOtpRequest)
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     override suspend fun registerDevice(deviceHash: String, fcmToken: String): Result<Boolean> {
         return try {
             val phoneNumber = deviceUtils.getPhoneNumber() ?: throw Exception("Phone number not available")

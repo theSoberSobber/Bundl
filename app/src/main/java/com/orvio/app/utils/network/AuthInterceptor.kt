@@ -1,9 +1,11 @@
 package com.orvio.app.utils.network
 
 import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
 import com.orvio.app.data.local.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
@@ -67,6 +69,35 @@ class AuthInterceptor @Inject constructor(
                 .code(401)
                 .message("Unauthorized - Will trigger token refresh")
                 .build()
+        }
+        
+        // Handle 403 Forbidden - similar to unauthorized but typically means token is invalid or expired beyond refresh
+        if (response.code == 403) {
+            Log.e(TAG, "[$requestId] Received 403 Forbidden for request: ${request.method} ${request.url}")
+            
+            // Implement logout directly to avoid dependency cycle
+            runBlocking {
+                // Check if tokens exist before attempting to sign out
+                val refreshToken = tokenManager.getRefreshToken().first()
+                
+                if (refreshToken != null) {
+                    Log.d(TAG, "[$requestId] Logging out due to 403 error")
+                    
+                    try {
+                        // Delete FCM token first
+                        FirebaseMessaging.getInstance().deleteToken().await()
+                        Log.d(TAG, "[$requestId] FCM token deleted successfully")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[$requestId] Failed to delete FCM token", e)
+                    }
+                    
+                    // Then clear auth tokens
+                    tokenManager.clearTokens()
+                    Log.d(TAG, "[$requestId] Auth tokens cleared")
+                } else {
+                    Log.d(TAG, "[$requestId] Skipping logout - tokens already cleared")
+                }
+            }
         }
         
         return response

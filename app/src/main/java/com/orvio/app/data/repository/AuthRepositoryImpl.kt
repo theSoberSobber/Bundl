@@ -1,6 +1,7 @@
 package com.orvio.app.data.repository
 
 import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
 import com.orvio.app.data.local.TokenManager
 import com.orvio.app.data.remote.api.AuthApiService
 import com.orvio.app.data.remote.dto.OtpSendRequestDto
@@ -11,6 +12,7 @@ import com.orvio.app.domain.model.OtpSendResponse
 import com.orvio.app.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -91,7 +93,38 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun clearAuthTokens() {
+        // Simply clear the tokens without any additional logic
         tokenManager.clearTokens()
+        Log.d(TAG, "Auth tokens cleared")
+    }
+    
+    override suspend fun logout() {
+        try {
+            // Check if we have tokens before attempting to delete FCM token
+            // This prevents the sign-out loop
+            val refreshToken = tokenManager.getRefreshToken().first()
+            
+            if (refreshToken != null) {
+                // First delete the FCM token from Firebase
+                try {
+                    Log.d(TAG, "Deleting FCM token as part of logout")
+                    FirebaseMessaging.getInstance().deleteToken().await()
+                    Log.d(TAG, "FCM token deleted successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete FCM token during logout", e)
+                    // Continue with token clearing even if FCM deletion fails
+                }
+                
+                // Then clear auth tokens
+                clearAuthTokens()
+            } else {
+                Log.d(TAG, "Logout skipped: Tokens already cleared")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during logout", e)
+            // Still attempt to clear tokens even if the FCM part fails
+            clearAuthTokens()
+        }
     }
     
     override fun getAccessToken(): Flow<String?> {

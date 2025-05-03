@@ -11,6 +11,7 @@ interface AuthRepository {
     
     suspend fun saveAuthTokens(accessToken: String?, refreshToken: String?)
     suspend fun clearAuthTokens()
+    suspend fun logout()
     
     fun getAccessToken(): Flow<String?>
     fun getRefreshToken(): Flow<String?>

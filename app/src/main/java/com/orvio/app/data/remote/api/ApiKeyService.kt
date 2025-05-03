@@ -1,6 +1,8 @@
 package com.orvio.app.data.remote.api
 
 import com.orvio.app.data.remote.dto.ApiKeyDto
+import com.orvio.app.data.remote.dto.CreditModeResponse
+import com.orvio.app.data.remote.dto.CreditsResponse
 import com.orvio.app.data.remote.dto.OtpSendRequestDto
 import com.orvio.app.data.remote.dto.OtpVerifyRequestDto
 import retrofit2.http.Body
@@ -28,4 +30,10 @@ interface ApiKeyService {
     
     @POST("/service/ack")
     suspend fun serviceAck(@Body request: Map<String, String>): Any
+    
+    @GET("/service/credits")
+    suspend fun getCredits(): CreditsResponse
+    
+    @GET("/service/creditMode")
+    suspend fun getCreditMode(): CreditModeResponse
 } 

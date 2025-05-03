@@ -15,11 +15,17 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.orvio.app.R
+import com.orvio.app.data.local.TokenManager
 import com.orvio.app.data.remote.api.ApiKeyService
+import com.orvio.app.data.remote.api.AuthApiService
+import com.orvio.app.data.remote.dto.DeviceRegisterRequestDto
+import com.orvio.app.domain.repository.AuthRepository
 import com.orvio.app.presentation.MainActivity
+import com.orvio.app.utils.DeviceUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,6 +36,18 @@ class OrvioFirebaseMessagingService : FirebaseMessagingService() {
     
     @Inject
     lateinit var apiKeyService: ApiKeyService
+    
+    @Inject
+    lateinit var authApiService: AuthApiService
+    
+    @Inject
+    lateinit var tokenManager: TokenManager
+    
+    @Inject
+    lateinit var deviceUtils: DeviceUtils
+    
+    @Inject
+    lateinit var authRepository: AuthRepository
     
     companion object {
         private const val TAG = "OrvioFCMService"
@@ -42,6 +60,33 @@ class OrvioFirebaseMessagingService : FirebaseMessagingService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+    }
+    
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        Log.d(TAG, "FCM Token refreshed: ${token.take(10)}...")
+        
+        // Register the new token with our backend
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Always try to register the token - no need to check tokens
+                // Get the phone number for registration
+                val phoneNumber = deviceUtils.getPhoneNumber() ?: ""
+                
+                // Register with backend using phoneNumber and fcmToken
+                authApiService.registerDevice(DeviceRegisterRequestDto(token, phoneNumber))
+                
+                Log.d(TAG, "Successfully registered new FCM token with backend")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to register FCM token with backend", e)
+                
+                // If we get a 403, let the interceptor handle the logout
+                if (e.message?.contains("403") == true) {
+                    Log.d(TAG, "Got 403 during token registration")
+                    // AuthInterceptor will handle the logout if needed
+                }
+            }
+        }
     }
     
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -61,12 +106,17 @@ class OrvioFirebaseMessagingService : FirebaseMessagingService() {
         val phoneNumber = remoteMessage.data["phoneNumber"]
         val timestamp = remoteMessage.data["timestamp"]
         val tid = remoteMessage.data["tid"]
+        val message = remoteMessage.data["message"]
+
+        if (message != null){
+            showToast("Server message found: $message")
+        }
         
         when (type) {
             "OTP" -> {
                 Log.d(TAG, "Handling OTP message")
                 showToast("Handling OTP message")
-                handleOtpMessage(otp, phoneNumber, timestamp, tid)
+                handleOtpMessage(otp, phoneNumber, timestamp, tid, message)
             }
             "PING" -> {
                 Log.d(TAG, "Handling PING message")
@@ -80,8 +130,8 @@ class OrvioFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
     
-    private fun handleOtpMessage(otp: String?, phoneNumber: String?, timestamp: String?, tid: String?) {
-        if (otp == null || phoneNumber == null || timestamp == null || tid == null) {
+    private fun handleOtpMessage(otp: String?, phoneNumber: String?, timestamp: String?, tid: String?, message: String?) {
+        if (message == null || phoneNumber == null || tid == null) {
             val errorMsg = "Missing required fields in OTP message: otp=$otp, phone=$phoneNumber, timestamp=$timestamp, tid=$tid"
             Log.e(TAG, errorMsg)
             showToast(errorMsg)
@@ -90,41 +140,78 @@ class OrvioFirebaseMessagingService : FirebaseMessagingService() {
         
         try {
             Log.d(TAG, "Processing OTP message with timestamp: $timestamp")
-            // Parse ISO 8601 timestamp
-            try {
-                val date = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).apply {
-                    timeZone = TimeZone.getTimeZone("UTC")
-                }.parse(timestamp)
+            
+            // Get the SMS manager
+            val smsManager = SmsManager.getDefault()
+            
+            // Split the message into chunks if it's too long
+            val messageParts = smsManager.divideMessage(message)
+            
+            if (messageParts.size > 1) {
+                Log.d(TAG, "Message is too long, splitting into ${messageParts.size} parts")
                 
-                if (date == null) {
-                    throw IllegalArgumentException("Failed to parse timestamp: $timestamp")
+                // Create a list of PendingIntents for each part
+                val sentIntents = ArrayList<PendingIntent>()
+                val deliveryIntents = ArrayList<PendingIntent>()
+                
+                // Create a unique request code for each part
+                val requestCode = System.currentTimeMillis().toInt()
+                
+                // Create sent and delivery intents for each part
+                for (i in messageParts.indices) {
+                    val sentIntent = PendingIntent.getBroadcast(
+                        this,
+                        requestCode + i,
+                        Intent("SMS_SENT").apply {
+                            putExtra("part", i)
+                            putExtra("total", messageParts.size)
+                            putExtra("tid", tid)
+                        },
+                        PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    sentIntents.add(sentIntent)
+                    
+                    val deliveryIntent = PendingIntent.getBroadcast(
+                        this,
+                        requestCode + i + messageParts.size,
+                        Intent("SMS_DELIVERED").apply {
+                            putExtra("part", i)
+                            putExtra("total", messageParts.size)
+                            putExtra("tid", tid)
+                        },
+                        PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    deliveryIntents.add(deliveryIntent)
                 }
                 
-                val formattedTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(date)
-                
-                // Send SMS
-                val smsManager = SmsManager.getDefault()
-                val message = "$otp. It was requested at $formattedTimestamp"
+                // Send the multipart message
+                smsManager.sendMultipartTextMessage(
+                    phoneNumber,
+                    null,
+                    messageParts,
+                    sentIntents,
+                    deliveryIntents
+                )
+                Log.d(TAG, "Multipart SMS sent successfully to $phoneNumber")
+                showToast("Multipart SMS sent successfully to $phoneNumber")
+            } else {
+                // Message is short enough to send in one part
                 smsManager.sendTextMessage(phoneNumber, null, message, null, null)
-                Log.d(TAG, "SMS sent successfully to $phoneNumber")
+                Log.d(TAG, "Single part SMS sent successfully to $phoneNumber")
                 showToast("SMS sent successfully to $phoneNumber")
-                
-                // Send acknowledgment
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        apiKeyService.serviceAck(mapOf("tid" to tid))
-                        Log.d(TAG, "Acknowledgment sent for TID: $tid")
-                        showToast("Acknowledgment sent for TID: $tid")
-                    } catch (e: Exception) {
-                        val ackError = "Failed to send acknowledgment: ${e.message}"
-                        Log.e(TAG, ackError, e)
-                        showToast(ackError)
-                    }
+            }
+            
+            // Send acknowledgment
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    apiKeyService.serviceAck(mapOf("tid" to tid))
+                    Log.d(TAG, "Acknowledgment sent for TID: $tid")
+                    showToast("Acknowledgment sent for TID: $tid")
+                } catch (e: Exception) {
+                    val ackError = "Failed to send acknowledgment: ${e.message}"
+                    Log.e(TAG, ackError, e)
+                    showToast(ackError)
                 }
-            } catch (e: Exception) {
-                val parseError = "Invalid timestamp format. Raw timestamp: '$timestamp', Error: ${e.message}"
-                Log.e(TAG, parseError, e)
-                showToast(parseError)
             }
         } catch (e: Exception) {
             val errorMsg = "Error handling OTP message: ${e::class.simpleName}: ${e.message}"

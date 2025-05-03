@@ -6,12 +6,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,7 +62,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,8 +174,8 @@ fun ApiKeysTab(
                 selectedApiKey = null
                 viewModel.clearTestResult()
             },
-            onTestClick = { key ->
-                viewModel.testApiKey(key)
+            onTestClick = { key, phoneNumber ->
+                viewModel.testApiKey(key, phoneNumber)
             },
             isLoading = viewModel.isTestingKey.collectAsState().value,
             testResult = viewModel.testResult.collectAsState().value
@@ -287,11 +293,35 @@ fun CreateApiKeyDialog(
 ) {
     var apiKeyName by remember { mutableStateOf("") }
     
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create API Key") },
-        text = {
-            Column {
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(16.dp)
+                .imePadding()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .windowInsetsPadding(WindowInsets.ime),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+            ) {
+                // Title
+                Text(
+                    text = "Create API Key",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
                 Text("Enter a name for your new API key")
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -301,9 +331,7 @@ fun CreateApiKeyDialog(
                     onValueChange = { apiKeyName = it },
                     label = { Text("API Key Name") },
                     singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .imePadding(),
+                    modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Done,
                         keyboardType = KeyboardType.Text
@@ -316,39 +344,72 @@ fun CreateApiKeyDialog(
                         }
                     )
                 )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onCreateClick(apiKeyName) },
-                enabled = apiKeyName.isNotBlank()
-            ) {
-                Text("Create")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = { onCreateClick(apiKeyName) },
+                        enabled = apiKeyName.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
 fun TestApiKeyDialog(
     apiKey: ApiKey,
     onDismiss: () -> Unit,
-    onTestClick: (String) -> Unit,
+    onTestClick: (String, String) -> Unit,
     isLoading: Boolean,
     testResult: Boolean?
 ) {
-    AlertDialog(
+    var phoneNumber by remember { mutableStateOf("") }
+    
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Test API Key") },
-        text = {
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(16.dp)
+                .imePadding()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .windowInsetsPadding(WindowInsets.ime),
+            shape = RoundedCornerShape(16.dp)
+        ) {
             Column(
+                modifier = Modifier
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Title
+                Text(
+                    text = "Test API Key",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
                 Text("Testing API key: ${apiKey.name}")
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -382,29 +443,50 @@ fun TestApiKeyDialog(
                         Text("API key test failed.")
                     }
                 } else {
-                    // Initial state, show the key and test button
-                    Text(
-                        text = apiKey.key,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth()
+                    // Initial state, show phone input and test button
+                    
+                    // Phone number input field
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = { phoneNumber = it },
+                        label = { Text("Recipient Phone Number") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            keyboardType = KeyboardType.Phone
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (phoneNumber.isNotBlank()) {
+                                    onTestClick(apiKey.key, phoneNumber)
+                                }
+                            }
+                        ),
+                        placeholder = { Text("Enter recipient phone number") }
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Button(
-                        onClick = { onTestClick(apiKey.key) },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { onTestClick(apiKey.key, phoneNumber) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = phoneNumber.isNotBlank()
                     ) {
                         Text("Test Key")
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Close button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Close")
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        },
-        dismissButton = {}
-    )
+        }
+    }
 } 

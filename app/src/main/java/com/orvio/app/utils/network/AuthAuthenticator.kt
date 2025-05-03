@@ -111,15 +111,10 @@ class AuthAuthenticator @Inject constructor(
                     }
                         
                 } catch (e: HttpException) {
-                    if (e.code() == 403) {
-                        // Only clear tokens if we got a 403 (Forbidden) from the refresh endpoint
-                        // This indicates the refresh token is invalid/revoked
-                        Log.e(TAG, "Received 403 Forbidden from refresh endpoint - clearing tokens")
-                        tokenManager.clearTokens()
-                    } else {
-                        Log.e(TAG, "Failed to refresh token. Status: ${e.code()}")
-                        Log.e(TAG, "Error message: ${e.message()}")
-                    }
+                    // No need to handle 403 here as the AuthInterceptor will handle it
+                    // when the retry is attempted
+                    Log.e(TAG, "Failed to refresh token. Status: ${e.code()}")
+                    Log.e(TAG, "Error message: ${e.message()}")
                     null
                 } catch (e: Exception) {
                     Log.e(TAG, "Exception during token refresh", e)

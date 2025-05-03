@@ -137,6 +137,31 @@ class DashboardViewModel @Inject constructor(
         }
     }
     
+    fun testApiKey(key: String, phoneNumber: String) {
+        viewModelScope.launch {
+            _isTestingKey.value = true
+            _errorMessage.value = null
+            _testResult.value = null
+            
+            try {
+                apiKeyRepository.testApiKey(key, phoneNumber).fold(
+                    onSuccess = { result ->
+                        _testResult.value = result
+                    },
+                    onFailure = { throwable ->
+                        _errorMessage.value = throwable.message ?: "Failed to test API key"
+                        _testResult.value = false
+                    }
+                )
+            } catch (e: Exception) {
+                _errorMessage.value = e.message ?: "An unexpected error occurred"
+                _testResult.value = false
+            } finally {
+                _isTestingKey.value = false
+            }
+        }
+    }
+    
     fun clearError() {
         _errorMessage.value = null
     }
