@@ -42,11 +42,17 @@ class HomeViewModel @Inject constructor(
     private val _credits = MutableStateFlow(0)
     val credits: StateFlow<Int> = _credits.asStateFlow()
     
+    private val _cashbackPoints = MutableStateFlow(0)
+    val cashbackPoints: StateFlow<Int> = _cashbackPoints.asStateFlow()
+    
     private val _creditMode = MutableStateFlow("")
     val creditMode: StateFlow<String> = _creditMode.asStateFlow()
     
     private val _isLoadingCredits = MutableStateFlow(false)
     val isLoadingCredits: StateFlow<Boolean> = _isLoadingCredits.asStateFlow()
+    
+    private val _isUpdatingCreditMode = MutableStateFlow(false)
+    val isUpdatingCreditMode: StateFlow<Boolean> = _isUpdatingCreditMode.asStateFlow()
     
     private val _secondsUntilRefresh = MutableStateFlow(30)
     val secondsUntilRefresh: StateFlow<Int> = _secondsUntilRefresh.asStateFlow()
@@ -88,6 +94,39 @@ class HomeViewModel @Inject constructor(
         super.onCleared()
         stopCreditsPolling()
         stopCountdownTimer()
+    }
+    
+    fun setCreditMode(mode: String) {
+        viewModelScope.launch {
+            _isUpdatingCreditMode.value = true
+            try {
+                val request = mapOf("mode" to mode)
+                val response = apiKeyService.setCreditMode(request)
+                if (response["success"] == true) {
+                    _creditMode.value = mode
+                    Log.d(TAG, "Credit mode updated to: $mode")
+                    // Refresh stats after mode change
+                    fetchUserStats(showLoading = false)
+                } else {
+                    _errorMessage.value = "Failed to update credit mode"
+                    Log.e(TAG, "Failed to update credit mode: $response")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating credit mode", e)
+                _errorMessage.value = "Error updating credit mode: ${e.message}"
+            } finally {
+                _isUpdatingCreditMode.value = false
+            }
+        }
+    }
+
+    fun refreshCredits() {
+        fetchCreditsInfo()
+        fetchUserStats()
+    }
+    
+    fun clearError() {
+        _errorMessage.value = null
     }
     
     private fun startCreditsPolling() {
@@ -206,6 +245,7 @@ class HomeViewModel @Inject constructor(
                 // Update credits from stats as well
                 _credits.value = stats.credits.balance
                 _creditMode.value = stats.credits.mode
+                _cashbackPoints.value = stats.credits.cashbackPoints
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch user stats", e)
                 if (showLoading) {
@@ -247,15 +287,5 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
-    }
-    
-    fun refreshCredits() {
-        fetchCreditsInfo()
-        fetchUserStats()
-        resetCountdown() // Reset the countdown when manually refreshing
-    }
-    
-    fun clearError() {
-        _errorMessage.value = null
     }
 } 

@@ -54,5 +54,6 @@ data class KeyStats(
 
 data class CreditStats(
     val balance: Int,
-    val mode: String
+    val mode: String,
+    val cashbackPoints: Int = 0
 ) 

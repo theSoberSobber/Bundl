@@ -1,7 +1,10 @@
 package com.orvio.app.presentation.dashboard
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,12 +23,20 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -68,8 +79,10 @@ fun HomeTab(
     val isRegistered by viewModel.isRegistered.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val credits by viewModel.credits.collectAsState()
+    val cashbackPoints by viewModel.cashbackPoints.collectAsState()
     val creditMode by viewModel.creditMode.collectAsState()
     val isLoadingCredits by viewModel.isLoadingCredits.collectAsState()
+    val isUpdatingCreditMode by viewModel.isUpdatingCreditMode.collectAsState()
     val secondsUntilRefresh by viewModel.secondsUntilRefresh.collectAsState()
     val userStats by viewModel.userStats.collectAsState()
     val isLoadingStats by viewModel.isLoadingStats.collectAsState()
@@ -155,13 +168,21 @@ fun HomeTab(
             ) {
                 WelcomeCard()
                 
-                // Credits card
+                // Credits card with cashback points
                 CreditsCard(
-                    credits = credits, 
-                    creditMode = creditMode, 
+                    credits = credits,
+                    cashbackPoints = cashbackPoints,
+                    creditMode = creditMode,
                     isLoading = isLoadingCredits,
-                    secondsUntilRefresh = secondsUntilRefresh
+                    isUpdatingCreditMode = isUpdatingCreditMode,
+                    secondsUntilRefresh = secondsUntilRefresh,
+                    onCreditModeChange = { newMode ->
+                        viewModel.setCreditMode(newMode)
+                    }
                 )
+
+                // Need more credits card
+                NeedMoreCreditsCard()
                 
                 // Device stats card
                 DeviceStatsCard(
@@ -226,11 +247,17 @@ fun WelcomeCard() {
 
 @Composable
 fun CreditsCard(
-    credits: Int, 
-    creditMode: String, 
+    credits: Int,
+    cashbackPoints: Int,
+    creditMode: String,
     isLoading: Boolean,
-    secondsUntilRefresh: Int
+    isUpdatingCreditMode: Boolean,
+    secondsUntilRefresh: Int,
+    onCreditModeChange: (String) -> Unit
 ) {
+    val expanded = remember { mutableStateOf(false) }
+    val creditModes = listOf("direct", "moderate", "strict")
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
@@ -251,11 +278,52 @@ fun CreditsCard(
                     modifier = Modifier.weight(1f)
                 )
                 
-                Text(
-                    text = "Mode: $creditMode",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+                // Credit mode dropdown
+                Box {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { expanded.value = !expanded.value }
+                    ) {
+                        Text(
+                            text = "Mode: ${creditMode.replaceFirstChar { it.uppercase() }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        Icon(
+                            imageVector = if (expanded.value) 
+                                          Icons.Default.KeyboardArrowUp else 
+                                          Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Credit Mode",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = expanded.value,
+                        onDismissRequest = { expanded.value = false }
+                    ) {
+                        creditModes.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(mode.replaceFirstChar { it.uppercase() }) 
+                                },
+                                onClick = {
+                                    onCreditModeChange(mode)
+                                    expanded.value = false
+                                },
+                                leadingIcon = if (creditMode == mode) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null
+                                        )
+                                    }
+                                } else null
+                            )
+                        }
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -263,28 +331,74 @@ fun CreditsCard(
             if (isLoading) {
                 CircularProgressIndicator()
             } else {
-                Text(
-                    text = "💰",
-                    style = MaterialTheme.typography.displayMedium,
-                    textAlign = TextAlign.Center
-                )
+                // Split into two columns
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Credits column
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "💰",
+                            style = MaterialTheme.typography.displayMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "$credits",
+                            style = MaterialTheme.typography.displaySmall,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            text = "Available Credits",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                    
+                    // Cashback points column
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "💵",
+                            style = MaterialTheme.typography.displayMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "$cashbackPoints",
+                            style = MaterialTheme.typography.displaySmall,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            text = "Cashback Points",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
-                Text(
-                    text = "$credits",
-                    style = MaterialTheme.typography.displaySmall,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = "Available Credits",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+                // Credit mode explanation
+                CreditModeExplanation(creditMode)
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -295,6 +409,76 @@ fun CreditsCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
                 )
+                
+                // Show updating indicator if changing mode
+                if (isUpdatingCreditMode) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CreditModeExplanation(mode: String) {
+    val explanation = when (mode) {
+        "direct" -> "Direct Mode: Charges 1 credit per OTP. Credits are never refunded, even if delivery fails."
+        "moderate" -> "Moderate Mode: Charges 1 credit per OTP. Credits refunded if delivery fails."
+        "strict" -> "Strict Mode: Charges 2 credits per OTP. Higher verification standards with partial refund if not verified."
+        else -> "Select a credit mode to see explanation"
+    }
+    
+    Text(
+        text = explanation,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
+fun NeedMoreCreditsCard() {
+    val context = LocalContext.current
+    val openCreditFaucet = {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://credit-faucet.1110777.xyz/"))
+        context.startActivity(intent)
+    }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Need More Credits?",
+                style = MaterialTheme.typography.titleMedium
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Buy credits or earn more by using the credit faucet",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = openCreditFaucet,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("💰 Get More Credits")
             }
         }
     }
