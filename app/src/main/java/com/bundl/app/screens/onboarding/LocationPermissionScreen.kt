@@ -66,7 +66,7 @@ fun LocationPermissionScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Bundl needs access to your location to provide you with location-based services and verify your identity. Your location helps us personalize your experience.",
+            text = "Bundl needs your location to find orders nearby and allow you to create orders at your current place. This helps us connect you with other users in your area for shared deliveries.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center
         )

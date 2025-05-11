@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Shield background -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M100,20 L180,60 L180,100 Q180,160 100,180 Q20,160 20,100 L20,60 Z"/>
+
+    <!-- Lock body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M80,80 L120,80 L120,130 L80,130 Z"/>
+
+    <!-- Lock shackle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M85,80 Q85,60 100,60 Q115,60 115,80"/>
+
+    <!-- Keyhole -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M95,100 L105,100 L105,110 L95,110 Z"/>
+
+</vector> 

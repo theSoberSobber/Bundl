@@ -6,6 +6,8 @@ import androidx.room.TypeConverter
 import com.bundl.app.domain.model.Order
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.text.SimpleDateFormat
+import java.util.*
 
 class Converters {
     @TypeConverter
@@ -35,7 +37,8 @@ data class OrderEntity(
     val latitude: Double,
     val longitude: Double,
     val phoneNumberMap: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val createdAt: String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
 ) {
     fun toOrder(): Order {
         return Order(
@@ -50,12 +53,16 @@ data class OrderEntity(
             totalUsers = totalUsers,
             platform = platform,
             latitude = latitude,
-            longitude = longitude
+            longitude = longitude,
+            createdAt = createdAt
         )
     }
 
     companion object {
+        private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        
         fun fromOrder(order: Order): OrderEntity {
+            val timestamp = order.createdAt ?: dateFormat.format(Date())
             return OrderEntity(
                 orderId = order.id,
                 status = order.status,
@@ -67,7 +74,8 @@ data class OrderEntity(
                 latitude = order.latitude,
                 longitude = order.longitude,
                 phoneNumberMap = order.phoneNumberMap?.let { Converters().fromMap(it) },
-                note = order.note
+                note = order.note,
+                createdAt = timestamp
             )
         }
     }

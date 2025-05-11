@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.bundl.app.data.local.OrderDatabase
 import com.bundl.app.data.local.OrderDao
 import com.bundl.app.data.local.MIGRATION_1_2
+import com.bundl.app.data.local.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +27,7 @@ object DatabaseModule {
             OrderDatabase::class.java,
             "orders.db"
         )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
     }
 

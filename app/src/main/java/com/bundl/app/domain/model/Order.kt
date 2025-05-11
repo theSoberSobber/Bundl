@@ -15,6 +15,6 @@ data class Order(
     val longitude: Double,
     val totalAmount: Int = 0,
     val distanceKm: Double? = null,
-    val createdAt: String = "",
+    val createdAt: String? = null,
     val credits: Int = 50 // Default value for demo purposes
 ) 

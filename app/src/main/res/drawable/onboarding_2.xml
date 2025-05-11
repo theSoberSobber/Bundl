@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Group circle background -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M100,100 m-80,0 a80,80 0 1,0 160,0 a80,80 0 1,0 -160,0"/>
+
+    <!-- People silhouettes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,80 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M120,120 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,120 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0"/>
+
+    <!-- Connecting lines -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M90,90 L140,120"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M90,90 L60,120"/>
+
+</vector> 

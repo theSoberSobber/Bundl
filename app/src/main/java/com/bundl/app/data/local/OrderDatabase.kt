@@ -5,6 +5,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.text.SimpleDateFormat
+import java.util.*
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(database: SupportSQLiteDatabase) {
@@ -13,9 +15,16 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        val defaultDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
+        database.execSQL("ALTER TABLE active_orders ADD COLUMN createdAt TEXT NOT NULL DEFAULT '$defaultDate'")
+    }
+}
+
 @Database(
     entities = [OrderEntity::class],
-    version = 2
+    version = 3
 )
 @TypeConverters(Converters::class)
 abstract class OrderDatabase : RoomDatabase() {

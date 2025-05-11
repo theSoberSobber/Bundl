@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Food delivery box -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M50,80 L150,80 L150,160 L50,160 Z"/>
+
+    <!-- Box lid -->
+    <path
+        android:fillColor="#388E3C"
+        android:pathData="M40,80 L160,80 L150,60 L50,60 Z"/>
+
+    <!-- Steam lines -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M80,50 Q90,35 100,50"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M100,50 Q110,35 120,50"/>
+
+    <!-- Bundl logo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M85,110 L115,110 A15,15 0 0 1 115,140 L85,140 A15,15 0 0 1 85,110"/>
+
+</vector> 

@@ -33,7 +33,7 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
     lateinit var tokenManager: TokenManager
     
     companion object {
-        private const val TAG = "BundlFCMService"
+        private const val TAG = "BUNDL_FCM"
         private const val CHANNEL_ID = "bundl_notifications"
         private const val NOTIFICATION_ID = 1
     }
@@ -42,12 +42,13 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
     
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "FCM Service created")
         createNotificationChannel()
     }
     
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "FCM Token refreshed: ${token.take(10)}...")
+        Log.d(TAG, "New FCM Token received: ${token.take(10)}...")
         
         // Update the FCM token on the server
         CoroutineScope(Dispatchers.IO).launch {
@@ -56,14 +57,13 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
                 val request = mapOf("fcmToken" to token)
                 val response = authApiService.updateFcmToken(request)
                 
-                Log.d(TAG, "FCM token update response: $response")
+                Log.d(TAG, "FCM token update successful: $response")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to update FCM token: ${e.message}")
                 
                 // If we get a 403, let the interceptor handle the logout
                 if (e.message?.contains("403") == true) {
-                    Log.d(TAG, "Got 403 during token update")
-                    // AuthInterceptor will handle the logout if needed
+                    Log.d(TAG, "Got 403 during token update, will be handled by interceptor")
                 }
             }
         }
@@ -72,14 +72,22 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         Log.d(TAG, "Message received from: ${remoteMessage.from}")
         
-        // Only handle notification messages
-        if (remoteMessage.notification != null) {
-            Log.d(TAG, "Notification Message received: ${remoteMessage.notification}")
-            showNotification(remoteMessage.notification!!)
+        // Log all data payload
+        if (remoteMessage.data.isNotEmpty()) {
+            Log.d(TAG, "Message data payload: ${remoteMessage.data}")
+        }
+        
+        // Log notification payload
+        remoteMessage.notification?.let { notification ->
+            Log.d(TAG, "Message Notification Title: ${notification.title}")
+            Log.d(TAG, "Message Notification Body: ${notification.body}")
+            showNotification(notification)
         }
     }
     
     private fun showNotification(notification: RemoteMessage.Notification) {
+        Log.d(TAG, "Showing notification - Title: ${notification.title}, Body: ${notification.body}")
+        
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
@@ -98,6 +106,7 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
         
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
+        Log.d(TAG, "Notification displayed successfully")
     }
     
     private fun createNotificationChannel() {
@@ -111,6 +120,7 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
             
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+            Log.d(TAG, "Notification channel created: $CHANNEL_ID")
         }
     }
 } 

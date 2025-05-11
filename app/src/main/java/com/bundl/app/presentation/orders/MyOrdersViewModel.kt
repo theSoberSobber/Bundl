@@ -108,7 +108,6 @@ class MyOrdersViewModel @Inject constructor(
                 Log.d("BUNDL_DEBUG", "Order details before Room - status: ${order.status}, platform: ${order.platform}, amount: ${order.amountNeeded}")
                 Log.d("BUNDL_DEBUG", "More order details - creatorId: ${order.creatorId}, totalPledge: ${order.totalPledge}, totalUsers: ${order.totalUsers}")
                 Log.d("BUNDL_DEBUG", "Location details - lat: ${order.latitude}, lon: ${order.longitude}")
-                showToast("Adding order ${order.id} to Room DB...")
                 
                 // Set status to ACTIVE when adding new order
                 val orderWithStatus = order.copy(status = "ACTIVE")
@@ -119,12 +118,10 @@ class MyOrdersViewModel @Inject constructor(
                 
                 orderDao.insertOrder(orderEntity)
                 Log.d("BUNDL_DEBUG", "Successfully added order to Room DB: ${order.id}")
-                showToast("Successfully added order to Room DB!")
                 
                 // Start polling if not already started
                 if (pollingJob?.isActive != true) {
                     Log.d("BUNDL_DEBUG", "Starting polling for order updates")
-                    showToast("Starting polling for order updates...")
                     startPolling()
                 } else {
                     Log.d("BUNDL_DEBUG", "Polling already active")

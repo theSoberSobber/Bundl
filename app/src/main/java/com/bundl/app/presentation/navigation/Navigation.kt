@@ -29,6 +29,7 @@ import com.bundl.app.utils.PermissionHandler
 import com.bundl.app.presentation.credits.GetMoreCreditsScreen
 import com.bundl.app.presentation.dummy.DummyScreen
 import com.bundl.app.presentation.orders.MyOrdersScreen
+import com.bundl.app.presentation.onboarding.OnboardingScreen
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -45,12 +46,16 @@ fun Navigation(
     // Flag to track whether auth status has been checked
     var hasCheckedAuthStatus by rememberSaveable { mutableStateOf(false) }
     
-    // Check permissions
+    // Check permissions and onboarding status
     val hasLocationPermissions = remember { 
         PermissionHandler.hasPermissions(context, PermissionHandler.locationPermissions)
     }
     val hasNotificationPermissions = remember {
         PermissionHandler.hasPermissions(context, PermissionHandler.notificationPermissions)
+    }
+    val hasSeenOnboarding = remember {
+        context.getSharedPreferences("bundl_prefs", Context.MODE_PRIVATE)
+            .getBoolean("has_seen_onboarding", false)
     }
     
     // Start with the splash screen
@@ -66,6 +71,10 @@ fun Navigation(
                         navController.navigate(Route.Dashboard.route) {
                             popUpTo(Route.Splash.route) { inclusive = true }
                         }
+                    } else if (!hasSeenOnboarding) {
+                        navController.navigate(Route.OnboardingScreen.route) {
+                            popUpTo(Route.Splash.route) { inclusive = true }
+                        }
                     } else if (!hasLocationPermissions) {
                         navController.navigate(Route.LocationPermission.route) {
                             popUpTo(Route.Splash.route) { inclusive = true }
@@ -78,6 +87,24 @@ fun Navigation(
                         navController.navigate(Route.Login.route) {
                             popUpTo(Route.Splash.route) { inclusive = true }
                         }
+                    }
+                }
+            )
+        }
+
+        composable(Route.OnboardingScreen.route) {
+            OnboardingScreen(
+                navController = navController,
+                onComplete = {
+                    // Mark onboarding as seen
+                    context.getSharedPreferences("bundl_prefs", Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("has_seen_onboarding", true)
+                        .apply()
+                    
+                    // Navigate to location permission
+                    navController.navigate(Route.LocationPermission.route) {
+                        popUpTo(Route.OnboardingScreen.route) { inclusive = true }
                     }
                 }
             )

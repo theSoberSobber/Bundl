@@ -560,8 +560,6 @@ class HomeViewModel @Inject constructor(
                 Log.d("BUNDL_DEBUG", "Creating order with: amount=$amountNeeded, platform=$platform, pledge=$initialPledge")
                 Log.d("BUNDL_DEBUG", "Using location: lat=${location.latitude}, lon=${location.longitude}")
                 
-                showToast("Creating order...")
-                
                 val response = orderApiService.createOrder(
                     CreateOrderRequest(
                         amountNeeded = amountNeeded,
@@ -575,7 +573,6 @@ class HomeViewModel @Inject constructor(
                 
                 Log.d("BUNDL_DEBUG", "Order created successfully: ${response.id}")
                 Log.d("BUNDL_DEBUG", "Full order response: $response")
-                showToast("Order created successfully! ID: ${response.id}")
                 
                 // Refresh active orders before navigating
                 fetchActiveOrders()

@@ -66,7 +66,7 @@ fun NotificationPermissionScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Bundl needs to send you notifications for important updates, authentication codes, and service alerts. This helps us keep your account secure and you informed.",
+            text = "Bundl needs to send you notifications to keep you updated about your orders. You'll receive updates when someone joins your order, when the order is confirmed, and when your food is on the way!",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center
         )
