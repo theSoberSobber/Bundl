@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Orvio</string>
+    <string name="app_name">Bundl</string>
     <string name="login_title">Phone number</string>
     <string name="login_subtitle">We use phone number authentication to prevent abuse, sorry for any inconvenience 🙏</string>
     <string name="enter_phone_hint">Enter phone number</string>

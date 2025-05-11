@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace 'com.orvio.app'
+    namespace 'com.bundl.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.orvio.app"
+        applicationId "com.bundl.app"
         minSdk 24
         targetSdk 34
         versionCode 1
@@ -102,9 +102,10 @@ dependencies {
     implementation "com.squareup.okhttp3:logging-interceptor:4.11.0"
     
     // Room
+    def room_version = "2.6.1"
     implementation "androidx.room:room-runtime:$room_version"
-    kapt "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
     
     // DataStore
     implementation "androidx.datastore:datastore-preferences:$datastore_version"
@@ -115,6 +116,18 @@ dependencies {
     
     // Accompanist
     implementation "com.google.accompanist:accompanist-permissions:0.32.0"
+    implementation "com.google.accompanist:accompanist-swiperefresh:0.27.0"
+    
+    // Google Play Services
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    implementation 'com.google.android.gms:play-services-auth:21.3.0'
+    
+    // Mapbox SDK
+    implementation 'com.mapbox.maps:android:11.12.0'
+    implementation 'com.mapbox.extension:maps-compose:11.12.0'
+    
+    // Cashfree Payment Gateway SDK
+    implementation 'com.cashfree.pg:api:2.2.0'
     
     // Testing
     testImplementation 'junit:junit:4.13.2'

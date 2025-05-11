@@ -1,3 +1,3 @@
-adb logcat -s OrvioAPI
-adb logcat -s OrvioAPI -e fcmToken
+adb logcat -s BundlAPI
+adb logcat -s BundlAPI -e fcmToken
 adb logcat -s AuthInterceptor AuthAuthenticator

@@ -42,20 +42,20 @@ jobs:
       
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
       
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Orvio-${{ steps.version.outputs.VERSION_NAME }}
-          path: app/build/outputs/apk/release/Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk
+          name: Bundl-${{ steps.version.outputs.VERSION_NAME }}
+          path: app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
           retention-days: 7
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.VERSION_NAME }}
-          name: Orvio v${{ steps.version.outputs.VERSION_NAME }}
+          name: Bundl v${{ steps.version.outputs.VERSION_NAME }}
           body: |
             Automated build created on $(date)
             
@@ -63,13 +63,13 @@ jobs:
             - Latest commit: ${{ github.event.head_commit.message }}
             - Branch: ${{ github.ref_name }}
           files: |
-            app/build/outputs/apk/release/Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk
+            app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
           generate_release_notes: true
           
       - name: Upload APK to APK Manager
         run: |
           echo "Uploading APK to APK Manager..."
           curl -v -X POST \
-            -H "X-Secret-Key: orvio-secret-key-change-in-production" \
-            -F "file=@app/build/outputs/apk/release/Orvio-${{ steps.version.outputs.VERSION_NAME }}.apk" \
-            https://apkmanager.1110777.xyz/orvio/upload 
+            -H "X-Secret-Key: bundl-secret-key-change-in-production" \
+            -F "file=@app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk" \
+            https://apkmanager.1110777.xyz/bundl/upload 

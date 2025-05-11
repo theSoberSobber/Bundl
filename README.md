@@ -1,6 +1,6 @@
-# Orvio Native App
+# Bundl Native App
 
-A native Kotlin Android application for Orvio, implementing the same functionality as the React Native version but with native Android components.
+A native Kotlin Android application for Bundl, implementing the same functionality as the React Native version but with native Android components.
 
 ## Features
 
@@ -38,7 +38,7 @@ The app follows Clean Architecture principles with the following layers:
 app/
 ├── src/
 │   ├── main/
-│   │   ├── java/com/orvio/app/
+│   │   ├── java/com/bundl/app/
 │   │   │   ├── data/
 │   │   │   │   ├── local/
 │   │   │   │   ├── remote/
@@ -69,7 +69,7 @@ app/
 
 ## API Connection
 
-The app connects to the Orvio backend API at `https://backend-orvio.1110777.xyz` for authentication, API key management, and device registration. 
+The app connects to the Bundl backend API at `https://backend-bundl.1110777.xyz` for authentication, API key management, and device registration. 
 
 # GitHub Actions Workflow Setup
 
@@ -78,7 +78,7 @@ To enable automatic APK builds and uploads to the APK Manager, you need to set t
 1. Go to your GitHub repository settings
 2. Navigate to Secrets and Variables > Actions
 3. Add the following secrets:
-   - `APK_MANAGER_SECRET_KEY`: The secret key for authenticating with the APK Manager (default: "orvio-secret-key-change-in-production")
+   - `APK_MANAGER_SECRET_KEY`: The secret key for authenticating with the APK Manager (default: "bundl-secret-key-change-in-production")
 
 The workflow will:
 1. Build a release APK on every push
@@ -88,6 +88,6 @@ The workflow will:
 ## Download the latest APK
 
 Users can always download the latest version of the app from:
-https://apkmanager.1110777.xyz/orvio/latest.apk
+https://apkmanager.1110777.xyz/bundl/latest.apk
 
 This link is already configured in the website's download buttons. 

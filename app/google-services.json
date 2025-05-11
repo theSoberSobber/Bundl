@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:344647734291:android:b71c166897cb4ee56adbe6",
+        "android_client_info": {
+          "package_name": "com.bundl.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_5TeBloaf9RbDiEkBDNKp04UkWtxvLNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:344647734291:android:48a75d6abd9b924c6adbe6",
         "android_client_info": {
           "package_name": "com.fcmnotificationapp"

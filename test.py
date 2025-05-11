@@ -2,7 +2,7 @@ import requests
 
 refresh_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMmE3YjQ2My1mNTRiLTRlNDgtOGIxMy0wY2Y0M2I5MzUxMzciLCJpYXRDdXN0b20iOiIxNzQ1ODY2NDU2NDU3IiwiaWF0IjoxNzQ1ODY2NDU2fQ.g4V5rgF-g1itwwR83lSzZ4VO8rQjel0IAef4Udk6x0Q"
 
-BASE_URL = "https://backend-orvio.1110777.xyz"
+BASE_URL = "https://backend-bundl.1110777.xyz"
 
 # Step 1: Refresh token
 refresh_response = requests.post(
