@@ -100,7 +100,7 @@ class PaymentService @Inject constructor(
 
                     // Create session object
                     val cfSession = CFSession.CFSessionBuilder()
-                        .setEnvironment(CFSession.Environment.SANDBOX)
+                        .setEnvironment(CFSession.Environment.PRODUCTION)
                         .setPaymentSessionID(sessionId)
                         .setOrderId(orderId)
                         .build()
