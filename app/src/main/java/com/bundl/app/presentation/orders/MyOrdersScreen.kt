@@ -237,6 +237,7 @@ fun HistoryOrderCard(order: Order) {
                 
                 // Show phone numbers if available
                 order.phoneNumberMap?.let { phoneMap ->
+                    Log.d("BUNDL_PHONE_NUMBERS", "Order ${order.id} has phone numbers: $phoneMap")
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Participants:",
@@ -244,11 +245,14 @@ fun HistoryOrderCard(order: Order) {
                         fontWeight = FontWeight.Bold
                     )
                     phoneMap.forEach { (phone, amount) ->
+                        Log.d("BUNDL_PHONE_NUMBERS", "Displaying phone: $phone with amount: $amount")
                         Text(
                             text = "$phone - ₹$amount",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
+                } ?: run {
+                    Log.d("BUNDL_PHONE_NUMBERS", "Order ${order.id} has NO phone numbers map")
                 }
                 
                 // Show note if available

@@ -8,6 +8,7 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Path
 import com.bundl.app.presentation.orders.OrderStatusResponse
+import okhttp3.ResponseBody
 
 data class PledgeRequest(
     val orderId: String,
@@ -41,4 +42,7 @@ interface OrderApiService {
 
     @GET("orders/orderStatus/{orderId}")
     suspend fun getOrderStatus(@Path("orderId") orderId: String): OrderStatusResponse
+    
+    @GET("orders/orderStatus/{orderId}")
+    suspend fun getOrderStatusRaw(@Path("orderId") orderId: String): ResponseBody
 } 

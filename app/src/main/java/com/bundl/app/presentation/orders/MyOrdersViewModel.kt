@@ -28,7 +28,9 @@ data class OrderStatusResponse(
     val creatorId: String,
     val platform: String,
     val status: String,
-    val pledgeMap: Map<String, Int>
+    val pledgeMap: Map<String, Int>,
+    val phoneNumerMap: Map<String, Int>? = null,
+    val note: String? = null
 )
 
 data class MyOrdersState(
@@ -167,7 +169,37 @@ class MyOrdersViewModel @Inject constructor(
             state.value.localActiveOrders.forEach { order ->
                 try {
                     Log.d("BUNDL_ORDERS", "Polling status for order: ${order.id}")
+                    
+                    // Log the absolute raw response before any deserialization
+                    try {
+                        val rawResponse = orderApiService.getOrderStatusRaw(order.id)
+                        val rawString = rawResponse.string()
+                        Log.d("BUNDL_PHONE_NUMBERS_RAW", "ABSOLUTE RAW RESPONSE: $rawString")
+                        
+                        // Check if the raw string contains phoneNumerMap
+                        if (rawString.contains("phoneNumerMap")) {
+                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE CONTAINS phoneNumerMap!")
+                        } else {
+                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE DOES NOT CONTAIN phoneNumerMap")
+                        }
+                        
+                        // Check if the raw string contains phoneNumberMap (correct spelling)
+                        if (rawString.contains("phoneNumberMap")) {
+                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE CONTAINS phoneNumberMap!")
+                        } else {
+                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE DOES NOT CONTAIN phoneNumberMap")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("BUNDL_PHONE_NUMBERS_RAW", "Error getting raw response: ${e.message}")
+                        e.printStackTrace()
+                    }
+                    
+                    // Continue with normal API call
                     val response = orderApiService.getOrderStatus(order.id)
+                    
+                    // Log the complete raw response with GSON
+                    val gson = GsonBuilder().setPrettyPrinting().create()
+                    Log.d("BUNDL_PHONE_NUMBERS", "Raw API response for order ${order.id}: ${gson.toJson(response)}")
                     
                     // Parse values
                     val status = response.status.uppercase()
@@ -177,28 +209,35 @@ class MyOrdersViewModel @Inject constructor(
                     
                     Log.d("BUNDL_ORDERS", "Received status: $status for order: ${order.id}")
                     Log.d("BUNDL_ORDERS", "Total pledge: $totalPledgeInt, Amount needed: $amountNeededInt")
-                    
+                    Log.d("BUNDL_PHONE_NUMBERS", "Response has phoneNumerMap: ${response.phoneNumerMap != null}, contents: ${response.phoneNumerMap}")
+                    Log.d("BUNDL_PHONE_NUMBERS", "Response has note: ${response.note != null}, contents: ${response.note}")
+
                     if (status != "ACTIVE") {
                         // Instead of deleting, update the status to keep it in history
-                        orderDao.updateOrderStatus(
+                        orderDao.updateOrderStatusWithPhoneMap(
                             orderId = order.id,
                             status = status,
                             totalPledge = totalPledgeInt,
-                            totalUsers = totalUsers
+                            totalUsers = totalUsers,
+                            phoneNumberMap = response.phoneNumerMap,
+                            note = response.note
                         )
                         Log.d("BUNDL_ORDERS", "Moved order to history: ${order.id}, status: $status")
                     } else {
                         // Update order status in Room DB
-                        orderDao.updateOrderStatus(
+                        orderDao.updateOrderStatusWithPhoneMap(
                             orderId = order.id,
                             status = status,
                             totalPledge = totalPledgeInt,
-                            totalUsers = totalUsers
+                            totalUsers = totalUsers,
+                            phoneNumberMap = response.phoneNumerMap,
+                            note = response.note
                         )
                         Log.d("BUNDL_ORDERS", "Updated active order: ${order.id}, pledge: $totalPledgeInt")
                     }
                 } catch (e: Exception) {
                     Log.e("BUNDL_ORDERS", "Error polling order ${order.id}: ${e.message}")
+                    e.printStackTrace()
                 }
             }
         } finally {
@@ -232,6 +271,36 @@ class MyOrdersViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("BUNDL_ORDERS", "Error refreshing orders", e)
+            }
+        }
+    }
+
+    fun loadOrderHistory() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                // First, load orders from local DB
+                orderDao.getActiveOrders().collect { entities ->
+                    val orders = entities.map { it.toOrder() }
+                    Log.d("BUNDL_ORDERS", "Loaded ${orders.size} local active orders")
+                    
+                    // Log each order's phoneNumberMap
+                    orders.forEach { order ->
+                        Log.d("BUNDL_PHONE_NUMBERS", "Local order ${order.id} phone map: ${order.phoneNumberMap}")
+                    }
+                    
+                    _state.update { it.copy(
+                        localActiveOrders = orders,
+                        isLoading = false
+                    )}
+                }
+                
+            } catch (e: Exception) {
+                Log.e("BUNDL_ORDERS", "Error loading order history", e)
+                _state.update { it.copy(
+                    error = "Error loading orders: ${e.message}",
+                    isLoading = false
+                )}
             }
         }
     }

@@ -1,24 +1,31 @@
 package com.bundl.app.di
 
+import android.content.Context
+import android.content.SharedPreferences
+import com.bundl.app.data.local.TokenManager
 import com.bundl.app.data.remote.api.ApiKeyService
 import com.bundl.app.data.remote.api.AuthApiService
 import com.bundl.app.data.remote.api.OrderApiService
+import com.bundl.app.utils.network.PlainTextConverterFactory
 import com.bundl.app.utils.network.AuthAuthenticator
 import com.bundl.app.utils.network.AuthInterceptor
-import com.bundl.app.utils.network.PlainTextConverterFactory
 import com.bundl.app.utils.network.TimingInterceptor
 import com.bundl.app.domain.payment.PaymentService
+import com.bundl.app.presentation.orders.OrderStatusResponse
+import com.bundl.app.presentation.orders.OrderStatusResponseDeserializer
+import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Qualifier
+import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
-import javax.inject.Qualifier
-import javax.inject.Singleton
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -143,11 +150,15 @@ object NetworkModule {
     @Singleton
     @RegularRetrofit
     fun provideRegularRetrofit(@RegularOkHttpClient okHttpClient: OkHttpClient): Retrofit {
+        val gson = GsonBuilder()
+            .registerTypeAdapter(OrderStatusResponse::class.java, OrderStatusResponseDeserializer())
+            .create()
+        
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(PlainTextConverterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
     

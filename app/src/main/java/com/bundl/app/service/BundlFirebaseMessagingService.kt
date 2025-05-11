@@ -98,11 +98,12 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
         )
         
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(notification.title)
             .setContentText(notification.body)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
         
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
@@ -113,9 +114,12 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Bundl Notifications"
             val descriptionText = "Notifications for Bundl app"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
             }
             
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
