@@ -70,6 +70,6 @@ jobs:
         run: |
           echo "Uploading APK to APK Manager..."
           curl -v -X POST \
-            -H "X-Secret-Key: bundl-secret-key-change-in-production" \
+            -H "X-Secret-Key: orvio-secret-key-change-in-production" \
             -F "file=@app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk" \
             https://apkmanager.1110777.xyz/bundl/upload 
