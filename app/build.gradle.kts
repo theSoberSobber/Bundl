@@ -3,10 +3,11 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
     id("dagger.hilt.android.plugin")
     id("com.google.gms.google-services")
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -59,8 +60,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     buildFeatures {

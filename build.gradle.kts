@@ -1,17 +1,13 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
+// Root build.gradle.kts
 
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.12.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20")
-        classpath("com.google.dagger:hilt-android-gradle-plugin:2.48")
-        classpath("com.google.gms:google-services:4.3.15")
-        classpath("androidx.room:room-gradle-plugin:2.6.1")
-        classpath("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:1.9.20-1.0.14")
-    }
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.hilt.android) apply false
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.compose.compiler) apply false // ✅ add this
 }
 
 tasks.register<Delete>("clean") {
