@@ -1,5 +1,6 @@
 package com.bundl.app.presentation.dashboard
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -19,8 +20,8 @@ import com.bundl.app.domain.repository.AuthRepository
 import com.bundl.app.domain.repository.OrderRepository
 import com.bundl.app.utils.DeviceUtils
 import com.bundl.app.utils.LocationManager
-import com.bundl.app.BundlApplication
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +59,8 @@ class HomeViewModel @Inject constructor(
     private val authApiService: AuthApiService,
     private val orderApiService: OrderApiService,
     private val mapProvider: MapProvider,
-    private val locationManager: LocationManager
+    private val locationManager: LocationManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _fcmToken = MutableStateFlow<String?>(null)
@@ -304,7 +306,6 @@ class HomeViewModel @Inject constructor(
     private fun showToast(message: String) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
             try {
-                val context = BundlApplication.getInstance()
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to show toast", e)

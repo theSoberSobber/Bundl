@@ -1,5 +1,6 @@
 package com.bundl.app.presentation.orders
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,6 +10,7 @@ import com.bundl.app.data.remote.api.OrderApiService
 import com.bundl.app.data.remote.api.PledgeRequest
 import com.bundl.app.domain.model.Order
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -45,7 +47,8 @@ data class MyOrdersState(
 @HiltViewModel
 class MyOrdersViewModel @Inject constructor(
     private val orderApiService: OrderApiService,
-    private val orderDao: OrderDao
+    private val orderDao: OrderDao,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _state = MutableStateFlow(MyOrdersState())
@@ -95,7 +98,6 @@ class MyOrdersViewModel @Inject constructor(
     private fun showToast(message: String) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
             try {
-                val context = com.bundl.app.BundlApplication.getInstance()
                 android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Log.e("BUNDL_DEBUG", "Failed to show toast", e)

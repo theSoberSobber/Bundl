@@ -1,5 +1,6 @@
 package com.bundl.app.presentation.credits
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -12,6 +13,7 @@ import com.bundl.app.domain.payment.PaymentService
 import com.bundl.app.domain.repository.ApiKeyRepository
 import com.cashfree.pg.core.api.utils.CFErrorResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +40,8 @@ data class CreditScreenState(
 class CreditsViewModel @Inject constructor(
     private val apiKeyService: ApiKeyService,
     private val apiKeyRepository: ApiKeyRepository,
-    private val paymentService: PaymentService
+    private val paymentService: PaymentService,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     
     private val _state = MutableStateFlow(CreditScreenState())
@@ -338,7 +341,6 @@ class CreditsViewModel @Inject constructor(
     private fun showToast(message: String) {
         viewModelScope.launch(Dispatchers.Main) {
             try {
-                val context = BundlApplication.getInstance()
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to show toast", e)
