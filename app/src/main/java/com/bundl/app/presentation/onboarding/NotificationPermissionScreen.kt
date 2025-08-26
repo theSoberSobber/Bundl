@@ -1,4 +1,4 @@
-package com.bundl.app.screens.onboarding
+package com.bundl.app.presentation.onboarding
 
 import android.Manifest
 import android.content.Context

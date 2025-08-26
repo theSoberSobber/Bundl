@@ -21,8 +21,8 @@ import com.bundl.app.presentation.auth.LoginScreen
 import com.bundl.app.presentation.auth.OtpScreen
 import com.bundl.app.presentation.dashboard.DashboardScreen
 import com.bundl.app.presentation.splash.SplashScreen
-import com.bundl.app.screens.onboarding.LocationPermissionScreen
-import com.bundl.app.screens.onboarding.NotificationPermissionScreen
+import com.bundl.app.presentation.onboarding.LocationPermissionScreen
+import com.bundl.app.presentation.onboarding.NotificationPermissionScreen
 import com.bundl.app.presentation.credits.GetMoreCreditsScreen
 import com.bundl.app.presentation.dummy.DummyScreen
 import com.bundl.app.presentation.orders.MyOrdersScreen
