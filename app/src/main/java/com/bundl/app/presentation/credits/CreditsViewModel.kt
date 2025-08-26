@@ -7,10 +7,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bundl.app.BundlApplication
-import com.bundl.app.data.remote.api.ApiKeyService
+import com.bundl.app.data.remote.api.CreditsService
 import com.bundl.app.domain.model.CreditPackage
 import com.bundl.app.domain.payment.PaymentService
-import com.bundl.app.domain.repository.ApiKeyRepository
+import com.bundl.app.domain.repository.CreditsRepository
 import com.cashfree.pg.core.api.utils.CFErrorResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,8 +38,8 @@ data class CreditScreenState(
 
 @HiltViewModel
 class CreditsViewModel @Inject constructor(
-    private val apiKeyService: ApiKeyService,
-    private val apiKeyRepository: ApiKeyRepository,
+    private val creditsService: CreditsService,
+    private val creditsRepository: CreditsRepository,
     private val paymentService: PaymentService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -91,7 +91,7 @@ class CreditsViewModel @Inject constructor(
     private fun fetchUserCredits() {
         viewModelScope.launch {
             try {
-                val creditsResponse = apiKeyService.getCredits()
+                val creditsResponse = creditsService.getCredits()
                 _state.update { it.copy(currentCredits = creditsResponse.credits) }
                 Log.d(TAG, "User credits retrieved: ${creditsResponse.credits}")
                 Log.d("BUNDL_CREDITS", "Credits screen - User credits retrieved: ${creditsResponse.credits}")
@@ -112,7 +112,7 @@ class CreditsViewModel @Inject constructor(
                 delay(1000) // Simulate network delay
                 
                 // This would be the actual API call in production:
-                // val packages = apiKeyService.getCreditPackages()
+                // val packages = creditsService.getCreditPackages()
                 
                 // For now we'll use mock data while the API endpoint is being developed
                 loadMockPackages()
@@ -242,7 +242,7 @@ class CreditsViewModel @Inject constructor(
                     val request = mapOf("orderId" to orderId)
                     
                     // Call the /credits/verify endpoint
-                    val verifyResult = apiKeyService.verifyCreditOrder(request)
+                    val verifyResult = creditsService.verifyCreditOrder(request)
                     Log.d(TAG, "Verify result: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
                     Log.d("BUNDL_CREDITS", "Verify result: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
                     

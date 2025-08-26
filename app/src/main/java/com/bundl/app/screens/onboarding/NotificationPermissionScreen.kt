@@ -20,7 +20,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.bundl.app.R
 import com.bundl.app.presentation.theme.Blue
-import com.bundl.app.utils.PermissionHandler
+import com.bundl.app.data.permissions.PermissionHandler
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable

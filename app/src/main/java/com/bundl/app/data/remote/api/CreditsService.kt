@@ -10,7 +10,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 
-interface ApiKeyService {
+interface CreditsService {
     @GET("/credits/balance")
     suspend fun getCredits(): CreditsResponse
     

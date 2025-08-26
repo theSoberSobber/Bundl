@@ -4,7 +4,7 @@ import android.content.Context
 import com.bundl.app.data.local.TokenManager
 import com.bundl.app.data.local.UserPreferencesManager
 import com.bundl.app.domain.repository.NavigationRepository
-import com.bundl.app.utils.PermissionHandler
+import com.bundl.app.data.permissions.PermissionHandler
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject

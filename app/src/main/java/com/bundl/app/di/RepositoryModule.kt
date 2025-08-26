@@ -1,12 +1,12 @@
 package com.bundl.app.di
 
-import com.bundl.app.data.repository.ApiKeyRepositoryImpl
 import com.bundl.app.data.repository.AuthRepositoryImpl
+import com.bundl.app.data.repository.CreditsRepositoryImpl
 import com.bundl.app.data.repository.DeviceRepositoryImpl
 import com.bundl.app.data.repository.LocationRepositoryImpl
 import com.bundl.app.data.repository.OrderRepositoryImpl
-import com.bundl.app.domain.repository.ApiKeyRepository
 import com.bundl.app.domain.repository.AuthRepository
+import com.bundl.app.domain.repository.CreditsRepository
 import com.bundl.app.domain.repository.DeviceRepository
 import com.bundl.app.domain.repository.LocationRepository
 import com.bundl.app.domain.repository.OrderRepository
@@ -28,9 +28,9 @@ abstract class RepositoryModule {
     
     @Binds
     @Singleton
-    abstract fun bindApiKeyRepository(
-        apiKeyRepositoryImpl: ApiKeyRepositoryImpl
-    ): ApiKeyRepository
+    abstract fun bindCreditsRepository(
+        creditsRepositoryImpl: CreditsRepositoryImpl
+    ): CreditsRepository
     
     @Binds
     @Singleton

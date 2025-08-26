@@ -6,7 +6,7 @@ data class CreditsInfo(
     val credits: Int
 )
 
-interface ApiKeyRepository {
+interface CreditsRepository {
     suspend fun getCredits(): Result<CreditsInfo>
     suspend fun setCreditMode(mode: String): Result<Unit>
 } 

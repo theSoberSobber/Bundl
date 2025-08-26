@@ -3,7 +3,7 @@ package com.bundl.app.di
 import android.content.Context
 import android.content.SharedPreferences
 import com.bundl.app.data.local.TokenManager
-import com.bundl.app.data.remote.api.ApiKeyService
+import com.bundl.app.data.remote.api.CreditsService
 import com.bundl.app.data.remote.api.AuthApiService
 import com.bundl.app.data.remote.api.OrderApiService
 import com.bundl.app.utils.network.PlainTextConverterFactory
@@ -170,8 +170,8 @@ object NetworkModule {
     
     @Provides
     @Singleton
-    fun provideApiKeyService(@RegularRetrofit retrofit: Retrofit): ApiKeyService {
-        return retrofit.create(ApiKeyService::class.java)
+    fun provideCreditsService(@RegularRetrofit retrofit: Retrofit): CreditsService {
+        return retrofit.create(CreditsService::class.java)
     }
     
     @Provides
@@ -182,7 +182,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun providePaymentService(apiKeyService: ApiKeyService): PaymentService {
-        return PaymentService(apiKeyService)
+    fun providePaymentService(creditsService: CreditsService): PaymentService {
+        return PaymentService(creditsService)
     }
 } 

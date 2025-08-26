@@ -2,7 +2,7 @@ package com.bundl.app.domain.payment
 
 import android.app.Activity
 import android.util.Log
-import com.bundl.app.data.remote.api.ApiKeyService
+import com.bundl.app.data.remote.api.CreditsService
 import com.cashfree.pg.api.CFPaymentGatewayService
 import com.cashfree.pg.core.api.CFSession
 import com.cashfree.pg.core.api.callback.CFCheckoutResponseCallback
@@ -35,7 +35,7 @@ data class VerifyResponse(
 
 @Singleton
 class PaymentService @Inject constructor(
-    private val apiKeyService: ApiKeyService
+    private val creditsService: CreditsService
 ) {
     companion object {
         private const val TAG = "PaymentService"
@@ -64,7 +64,7 @@ class PaymentService @Inject constructor(
                 )
                 
                 // Call the API to create an order
-                val response = apiKeyService.createCreditOrder(request)
+                val response = creditsService.createCreditOrder(request)
                 Log.d(TAG, "Order created: ${response.orderId}")
                 Result.success(response)
             } catch (e: Exception) {
@@ -78,7 +78,7 @@ class PaymentService @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val request = mapOf("orderId" to orderId)
-                val response = apiKeyService.verifyCreditOrder(request)
+                val response = creditsService.verifyCreditOrder(request)
                 Log.d(TAG, "Order verified: $orderId, success: ${response.success}")
                 Result.success(response)
             } catch (e: Exception) {

@@ -1,18 +1,18 @@
 package com.bundl.app.data.repository
 
-import com.bundl.app.data.remote.api.ApiKeyService
-import com.bundl.app.domain.repository.ApiKeyRepository
+import com.bundl.app.data.remote.api.CreditsService
+import com.bundl.app.domain.repository.CreditsRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ApiKeyRepositoryImpl @Inject constructor(
-    private val apiKeyService: ApiKeyService
-) : ApiKeyRepository {
+class CreditsRepositoryImpl @Inject constructor(
+    private val creditsService: CreditsService
+) : CreditsRepository {
     
     override suspend fun getCredits(): Result<com.bundl.app.domain.repository.CreditsInfo> {
         return try {
-            val creditsResponse = apiKeyService.getCredits()
+            val creditsResponse = creditsService.getCredits()
             Result.success(com.bundl.app.domain.repository.CreditsInfo(creditsResponse.credits))
         } catch (e: Exception) {
             Result.failure(e)
@@ -22,7 +22,7 @@ class ApiKeyRepositoryImpl @Inject constructor(
     override suspend fun setCreditMode(mode: String): Result<Unit> {
         return try {
             val request = mapOf("mode" to mode)
-            val response = apiKeyService.setCreditMode(request)
+            val response = creditsService.setCreditMode(request)
             if (response["success"] == true) {
                 Result.success(Unit)
             } else {

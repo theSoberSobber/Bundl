@@ -1,6 +1,6 @@
 package com.bundl.app.domain.usecase.credits
 
-import com.bundl.app.domain.repository.ApiKeyRepository
+import com.bundl.app.domain.repository.CreditsRepository
 import com.bundl.app.domain.usecase.base.VoidParameterizedUseCase
 import javax.inject.Inject
 
@@ -9,10 +9,10 @@ data class SetCreditModeParams(
 )
 
 class SetCreditModeUseCase @Inject constructor(
-    private val apiKeyRepository: ApiKeyRepository
+    private val creditsRepository: CreditsRepository
 ) : VoidParameterizedUseCase<SetCreditModeParams> {
     
     override suspend fun invoke(parameters: SetCreditModeParams): Result<Unit> {
-        return apiKeyRepository.setCreditMode(parameters.mode)
+        return creditsRepository.setCreditMode(parameters.mode)
     }
 }
