@@ -25,7 +25,6 @@ import com.bundl.app.utils.PermissionHandler
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun NotificationPermissionScreen(
-    navController: NavController,
     onPermissionGranted: () -> Unit
 ) {
     val context = LocalContext.current

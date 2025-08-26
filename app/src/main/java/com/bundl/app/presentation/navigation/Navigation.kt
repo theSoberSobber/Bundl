@@ -1,15 +1,13 @@
 package com.bundl.app.presentation.navigation
 
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -17,7 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.bundl.app.domain.maps.MapProvider
-import com.bundl.app.presentation.MainActivity
+import com.bundl.app.domain.repository.NavigationRepository
 import com.bundl.app.presentation.auth.AuthViewModel
 import com.bundl.app.presentation.auth.LoginScreen
 import com.bundl.app.presentation.auth.OtpScreen
@@ -25,37 +23,61 @@ import com.bundl.app.presentation.dashboard.DashboardScreen
 import com.bundl.app.presentation.splash.SplashScreen
 import com.bundl.app.screens.onboarding.LocationPermissionScreen
 import com.bundl.app.screens.onboarding.NotificationPermissionScreen
-import com.bundl.app.utils.PermissionHandler
 import com.bundl.app.presentation.credits.GetMoreCreditsScreen
 import com.bundl.app.presentation.dummy.DummyScreen
 import com.bundl.app.presentation.orders.MyOrdersScreen
 import com.bundl.app.presentation.onboarding.OnboardingScreen
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @Composable
 fun Navigation(
-    context: Context,
-    activity: MainActivity,
     mapProvider: MapProvider
 ) {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState(initial = false)
+    val coroutineScope = rememberCoroutineScope()
     
-    // Flag to track whether auth status has been checked
-    var hasCheckedAuthStatus by rememberSaveable { mutableStateOf(false) }
+    // Inject navigation repository through Hilt
+    val navigationRepository: NavigationRepository = hiltViewModel<NavigationViewModel>().navigationRepository
     
-    // Check permissions and onboarding status
-    val hasLocationPermissions = remember { 
-        PermissionHandler.hasPermissions(context, PermissionHandler.locationPermissions)
+    // State machine for clean navigation flow
+    val navigationStateManager = remember { NavigationStateManager(navigationRepository) }
+    var currentNavigationState by remember { mutableStateOf<NavigationState>(NavigationState.Loading) }
+    
+    // Helper function to navigate - clear backstack only for dashboard
+    fun navigateToRoute(route: String, clearBackstack: Boolean = false) {
+        navController.navigate(route) {
+            if (clearBackstack) {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            }
+            launchSingleTop = true
+        }
     }
-    val hasNotificationPermissions = remember {
-        PermissionHandler.hasPermissions(context, PermissionHandler.notificationPermissions)
+    
+    // Handle navigation events - just navigate, let state machine handle logic
+    fun handleNavigationEvent(event: NavigationEvent) {
+        coroutineScope.launch {
+            val navigationResult = navigationStateManager.handleEvent(currentNavigationState, event, isLoggedIn)
+            currentNavigationState = navigationResult.newState
+            val route = navigationStateManager.getRouteForState(navigationResult.newState)
+            
+            // State machine decides if we should clear backstack
+            navigateToRoute(route, navigationResult.shouldClearBackstack)
+        }
     }
-    val hasSeenOnboarding = remember {
-        context.getSharedPreferences("bundl_prefs", Context.MODE_PRIVATE)
-            .getBoolean("has_seen_onboarding", false)
+    
+    // Handle auth state changes (token expiry, logout)
+    LaunchedEffect(isLoggedIn) {
+        if (currentNavigationState != NavigationState.Loading) {
+            if (!isLoggedIn && currentNavigationState == NavigationState.Dashboard) {
+                // this never gets triggered right now because I do not have an auth check at launch I think, TODO if not
+                handleNavigationEvent(NavigationEvent.TokenExpired)
+            } else if (isLoggedIn && currentNavigationState == NavigationState.Login) {
+                handleNavigationEvent(NavigationEvent.LoginSuccessful)
+            }
+        }
     }
     
     // Start with the splash screen
@@ -66,72 +88,32 @@ fun Navigation(
         composable(Route.Splash.route) {
             SplashScreen(
                 onCheckComplete = {
-                    hasCheckedAuthStatus = true
-                    if (isLoggedIn) {
-                        navController.navigate(Route.Dashboard.route) {
-                            popUpTo(Route.Splash.route) { inclusive = true }
-                        }
-                    } else if (!hasSeenOnboarding) {
-                        navController.navigate(Route.OnboardingScreen.route) {
-                            popUpTo(Route.Splash.route) { inclusive = true }
-                        }
-                    } else if (!hasLocationPermissions) {
-                        navController.navigate(Route.LocationPermission.route) {
-                            popUpTo(Route.Splash.route) { inclusive = true }
-                        }
-                    } else if (!hasNotificationPermissions) {
-                        navController.navigate(Route.NotificationPermission.route) {
-                            popUpTo(Route.Splash.route) { inclusive = true }
-                        }
-                    } else {
-                        navController.navigate(Route.Login.route) {
-                            popUpTo(Route.Splash.route) { inclusive = true }
-                        }
-                    }
+                    handleNavigationEvent(NavigationEvent.SplashCompleted)
                 }
             )
         }
 
-        composable(Route.OnboardingScreen.route) {
+        composable(Route.Onboarding.route) {
             OnboardingScreen(
                 navController = navController,
                 onComplete = {
-                    // Mark onboarding as seen
-                    context.getSharedPreferences("bundl_prefs", Context.MODE_PRIVATE)
-                        .edit()
-                        .putBoolean("has_seen_onboarding", true)
-                        .apply()
-                    
-                    // Navigate to location permission
-                    navController.navigate(Route.LocationPermission.route) {
-                        popUpTo(Route.OnboardingScreen.route) { inclusive = true }
-                    }
+                    handleNavigationEvent(NavigationEvent.OnboardingCompleted)
                 }
             )
         }
         
         composable(Route.LocationPermission.route) {
             LocationPermissionScreen(
-                navController = navController,
                 onPermissionGranted = {
-                    if (PermissionHandler.hasPermissions(context, PermissionHandler.notificationPermissions)) {
-                        navController.navigate(Route.Login.route) {
-                            popUpTo(Route.LocationPermission.route) { inclusive = true }
-                        }
-                    } else {
-                        navController.navigate(Route.NotificationPermission.route)
-                    }
+                    handleNavigationEvent(NavigationEvent.LocationPermissionGranted)
                 }
             )
         }
 
         composable(Route.NotificationPermission.route) {
             NotificationPermissionScreen(
-                navController = navController,
                 onPermissionGranted = {
-                    navController.navigate(Route.Login.route) {
-                        popUpTo(Route.LocationPermission.route) { inclusive = true }
-                    }
+                    handleNavigationEvent(NavigationEvent.NotificationPermissionGranted)
                 }
             )
         }
@@ -139,7 +121,7 @@ fun Navigation(
         composable(Route.Login.route) {
             LoginScreen(
                 onNavigateToOtp = { tid, phoneNumber ->
-                    navController.navigate(Route.Otp.createRoute(tid, phoneNumber))
+                    handleNavigationEvent(NavigationEvent.OtpRequested(tid, phoneNumber))
                 }
             )
         }
@@ -159,9 +141,7 @@ fun Navigation(
                 phoneNumber = phoneNumber,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDashboard = {
-                    navController.navigate(Route.Dashboard.route) {
-                        popUpTo(Route.LocationPermission.route) { inclusive = true }
-                    }
+                    handleNavigationEvent(NavigationEvent.LoginSuccessful)
                 }
             )
         }
@@ -173,9 +153,7 @@ fun Navigation(
                 mapProvider = mapProvider,
                 onLogout = {
                     authViewModel.logout()
-                    navController.navigate(Route.Login.route) {
-                        popUpTo(Route.Dashboard.route) { inclusive = true }
-                    }
+                    handleNavigationEvent(NavigationEvent.LogoutRequested)
                 }
             )
         }
@@ -190,23 +168,8 @@ fun Navigation(
             DummyScreen()
         }
 
-        composable(Route.MyOrdersScreen.route) {
+        composable(Route.MyOrders.route) {
             MyOrdersScreen(navController = navController)
-        }
-    }
-    
-    // If auth status changes after initial check (e.g., token expires), handle it
-    LaunchedEffect(isLoggedIn) {
-        if (hasCheckedAuthStatus) {
-            if (isLoggedIn && navController.currentDestination?.route != Route.Dashboard.route) {
-                navController.navigate(Route.Dashboard.route) {
-                    popUpTo(0) { inclusive = true }
-                }
-            } else if (!isLoggedIn && navController.currentDestination?.route == Route.Dashboard.route) {
-                navController.navigate(Route.LocationPermission.route) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
         }
     }
 } 

@@ -28,8 +28,6 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Navigation(
-                        context = this@MainActivity,
-                        activity = this@MainActivity,
                         mapProvider = mapProvider
                     )
                 }

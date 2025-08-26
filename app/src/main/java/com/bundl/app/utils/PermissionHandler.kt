@@ -20,6 +20,11 @@ object PermissionHandler {
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
+    
+    // Background location permission (for "Allow all the time")
+    val backgroundLocationPermissions = arrayOf(
+        Manifest.permission.ACCESS_BACKGROUND_LOCATION
+    )
 
     val notificationPermissions = arrayOf(
         Manifest.permission.POST_NOTIFICATIONS

@@ -543,7 +543,7 @@ class HomeViewModel @Inject constructor(
                     // If order exists, pass it to the success callback to be added to MyOrdersViewModel
                     order?.let { 
                         // Navigate to MyOrdersScreen and pass the order
-                        onSuccess(Route.MyOrdersScreen.route)
+                        onSuccess(Route.MyOrders.route)
                     }
                 } else {
                     Log.e(TAG, "Failed to pledge to order: ${response.code()}")
@@ -579,7 +579,7 @@ class HomeViewModel @Inject constructor(
                 fetchActiveOrders()
                 
                 Log.d("BUNDL_DEBUG", "Calling onSuccess callback with route and order")
-                onSuccess(Route.MyOrdersScreen.route, response)
+                onSuccess(Route.MyOrders.route, response)
                 
             } catch (e: Exception) {
                 Log.e("BUNDL_DEBUG", "Error creating order", e)

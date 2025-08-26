@@ -240,7 +240,7 @@ fun HomeTab(
         ) {
             // My Orders button
             Button(
-                onClick = { navController.navigate(Route.MyOrdersScreen.route) },
+                onClick = { navController.navigate(Route.MyOrders.route) },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer

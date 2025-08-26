@@ -14,8 +14,5 @@ sealed class Route(val route: String) {
     object Dashboard : Route("dashboard")
     object GetMoreCredits : Route("get_more_credits")
     object DummyScreen : Route("dummy_screen")
-    object MyOrdersScreen : Route("my_orders_screen")
-    object OnboardingScreen : Route("onboarding_screen")
-    object LoginScreen : Route("login_screen")
-    object DashboardScreen : Route("dashboard_screen")
+    object MyOrders : Route("my_orders")
 } 
