@@ -94,24 +94,14 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
     private fun handleGeohashOrderNotification(remoteMessage: RemoteMessage) {
         Log.d(TAG, "Handling geohash-based order notification")
         
-        val data = remoteMessage.data
-        val geohash = data["geohash"]
-        val orderType = data["orderType"]
-        val estimatedEarnings = data["estimatedEarnings"]
-        val distance = data["distance"]
-        val title = data["title"] ?: "New Order Nearby"
-        val body = data["body"] ?: "A new delivery order is available in your area"
+        // Server sends complete notification data - just display it
+        val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title ?: "New Order Nearby"
+        val body = remoteMessage.data["body"] ?: remoteMessage.notification?.body ?: "Join a group order in your area"
         
-        Log.d(TAG, "Geohash order details - Geohash: $geohash, Type: $orderType, Earnings: $estimatedEarnings, Distance: $distance")
+        Log.d(TAG, "Geohash notification - Title: $title, Body: $body")
         
-        // Create enhanced notification for nearby orders
-        showGeohashOrderNotification(
-            title = title,
-            body = body,
-            orderType = orderType,
-            estimatedEarnings = estimatedEarnings,
-            distance = distance
-        )
+        // Show notification with server-provided content
+        showGeohashOrderNotification(title, body, remoteMessage.data)
     }
     
     private fun showNotification(notification: RemoteMessage.Notification) {
@@ -139,22 +129,17 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "Notification displayed successfully")
     }
     
-    private fun showGeohashOrderNotification(
-        title: String,
-        body: String,
-        orderType: String?,
-        estimatedEarnings: String?,
-        distance: String?
-    ) {
+    private fun showGeohashOrderNotification(title: String, body: String, data: Map<String, String>) {
         Log.d(TAG, "Showing geohash order notification - Title: $title, Body: $body")
         
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            // Add extra data to navigate to orders or map
-            putExtra("notification_type", "nearby_order")
-            putExtra("order_type", orderType)
-            putExtra("estimated_earnings", estimatedEarnings)
-            putExtra("distance", distance)
+            // Add notification type for app routing
+            putExtra("notification_type", "geohash_order")
+            // Pass through any additional data from server
+            data.forEach { (key, value) ->
+                putExtra(key, value)
+            }
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -162,37 +147,18 @@ class BundlFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Create enhanced notification with action buttons
-        val enhancedBody = buildString {
-            append(body)
-            if (estimatedEarnings != null) {
-                append("\n💰 Earnings: ₹$estimatedEarnings")
-            }
-            if (distance != null) {
-                append("\n📍 Distance: ${distance}km")
-            }
-            if (orderType != null) {
-                append("\n📦 Type: $orderType")
-            }
-        }
-        
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
-            .setContentText(enhancedBody)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(enhancedBody))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .addAction(
-                R.drawable.ic_location, 
-                "View", 
-                pendingIntent
-            )
         
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Use different notification ID for order notifications
+        // Use different notification ID for geohash order notifications
         notificationManager.notify(NOTIFICATION_ID + 1, notificationBuilder.build())
         Log.d(TAG, "Geohash order notification displayed successfully")
     }

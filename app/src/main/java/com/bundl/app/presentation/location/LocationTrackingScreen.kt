@@ -104,7 +104,7 @@ fun LocationTrackingScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "We need location permission to show you nearby orders and delivery opportunities.",
+                        text = "We need location permission to show you nearby group orders and deals.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -157,7 +157,7 @@ fun LocationTrackingScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Enable to receive notifications for nearby delivery orders",
+                        text = "Enable to receive notifications for nearby group orders",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

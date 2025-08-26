@@ -15,7 +15,7 @@
 ## System Architecture
 
 ### Overview
-The system uses a **geohash-based spatial indexing** approach to divide the world into hierarchical grid squares. Each square has a unique identifier (geohash) that becomes an FCM topic for location-based notifications.
+The system uses a **geohash-based spatial indexing** approach to divide the world into hierarchical grid squares. Each square has a unique identifier (geohash) that becomes an FCM topic for location-based notifications about nearby group orders and deals.
 
 ### Component Hierarchy
 ```
@@ -30,7 +30,7 @@ FCM Topics (geohash_XXXXX)
 
 ### Data Flow
 ```
-GPS Location → Geohash Calculation → Coverage Area → FCM Subscriptions → Notifications
+GPS Location → Geohash Calculation → Coverage Area → FCM Subscriptions → Group Order Notifications
 ```
 
 ---
@@ -674,13 +674,14 @@ class MLGeohashOptimizer {
 
 ### 4. Server-Side Optimization
 ```kotlin
-// Server maintains geohash index for efficient order matching
-class GeohashIndex {
+// Server maintains geohash index for efficient group order matching
+class GeohashOrderIndex {
     private val ordersByGeohash = ConcurrentHashMap<String, MutableSet<OrderId>>()
     
-    fun addOrder(order: Order) {
+    fun addGroupOrder(order: GroupOrder) {
         val geohashes = GeohashUtils.getCoverageGeohashes(
-            order.latitude, order.longitude, order.deliveryRadius, 7
+            order.restaurantLatitude, order.restaurantLongitude, 
+            order.deliveryRadius, 7
         )
         
         geohashes.forEach { geohash ->
@@ -689,9 +690,20 @@ class GeohashIndex {
         }
     }
     
-    fun publishToGeohash(geohash: String, order: Order) {
-        // Publish FCM message to topic "geohash_$geohash"
-        fcm.publish("geohash_$geohash", order.toNotificationData())
+    fun publishToGeohash(geohash: String, order: GroupOrder) {
+        // Server creates complete notification content
+        val notification = FCMNotification(
+            title = "New Group Order: ${order.restaurantName}",
+            body = "Join ${order.currentMembers} others • ${order.itemsNeeded} items needed • Free delivery!",
+            data = mapOf(
+                "order_id" to order.id,
+                "restaurant_id" to order.restaurantId,
+                "type" to "group_order"
+            )
+        )
+        
+        // Publish to FCM topic "geohash_$geohash" 
+        fcm.publish("geohash_$geohash", notification)
     }
 }
 ```
@@ -710,13 +722,15 @@ This geohash-based location system provides:
 - **Robust**: Comprehensive error handling
 
 ### 🎯 **Business Benefits**  
-- **Hyper-Local**: 153m precision for relevant notifications
+- **Hyper-Local**: 153m precision for relevant group order notifications
 - **High Performance**: Handles millions of users
-- **Cost-Effective**: Minimal server load
-- **User-Friendly**: Transparent background operation
+- **Cost-Effective**: Minimal server load with efficient spatial indexing
+- **User-Friendly**: Transparent background operation, users just get nearby deals
 
 ### 🚀 **Ready for Production**
-The system is mathematically sound, performance-optimized, and handles real-world edge cases. The 200m precision targeting provides the perfect balance of relevance and efficiency for a delivery platform.
+The system is mathematically sound, performance-optimized, and handles real-world edge cases. The 200m precision targeting provides the perfect balance of relevance and efficiency for a group buying platform.
+
+**Server Integration Note**: The client only handles geohash calculation and FCM topic subscription. All notification content (titles, descriptions, order details) should be managed entirely by the server when publishing to `geohash_XXXXX` topics.
 
 ---
 
