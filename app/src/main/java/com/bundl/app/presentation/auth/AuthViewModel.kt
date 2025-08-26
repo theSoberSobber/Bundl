@@ -2,22 +2,28 @@ package com.bundl.app.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bundl.app.domain.repository.AuthRepository
-import com.bundl.app.data.utils.DeviceUtils
+import com.bundl.app.domain.usecase.auth.CheckLoginStatusUseCase
+import com.bundl.app.domain.usecase.auth.GetFcmTokenUseCase
+import com.bundl.app.domain.usecase.auth.LogoutUseCase
+import com.bundl.app.domain.usecase.auth.SendOtpParams
+import com.bundl.app.domain.usecase.auth.SendOtpUseCase
+import com.bundl.app.domain.usecase.auth.VerifyOtpParams
+import com.bundl.app.domain.usecase.auth.VerifyOtpUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import android.util.Log
-import com.google.firebase.messaging.FirebaseMessaging
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
-    private val deviceUtils: DeviceUtils
+    private val checkLoginStatusUseCase: CheckLoginStatusUseCase,
+    private val sendOtpUseCase: SendOtpUseCase,
+    private val verifyOtpUseCase: VerifyOtpUseCase,
+    private val getFcmTokenUseCase: GetFcmTokenUseCase,
+    private val logoutUseCase: LogoutUseCase
 ) : ViewModel() {
     
     companion object {
@@ -30,7 +36,22 @@ class AuthViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
     
-    val isLoggedIn = authRepository.isLoggedIn()
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+    
+    init {
+        // Initialize login status
+        viewModelScope.launch {
+            checkLoginStatusUseCase().fold(
+                onSuccess = { loggedIn ->
+                    _isLoggedIn.value = loggedIn
+                },
+                onFailure = { 
+                    _isLoggedIn.value = false
+                }
+            )
+        }
+    }
     
     fun showError(message: String) {
         _errorMessage.value = message
@@ -42,9 +63,9 @@ class AuthViewModel @Inject constructor(
             _errorMessage.value = null
             
             try {
-                authRepository.sendOtp(phoneNumber).fold(
-                    onSuccess = { response ->
-                        onSuccess(response.tid)
+                sendOtpUseCase(SendOtpParams(phoneNumber)).fold(
+                    onSuccess = { tid ->
+                        onSuccess(tid)
                     },
                     onFailure = { throwable ->
                         _errorMessage.value = throwable.message ?: "Failed to send OTP"
@@ -64,19 +85,13 @@ class AuthViewModel @Inject constructor(
             _errorMessage.value = null
             
             try {
-                // Get FCM token for verification
-                val fcmToken = try {
-                    FirebaseMessaging.getInstance().token.await()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to get FCM token", e)
-                    _errorMessage.value = "Failed to get device token: ${e.message}"
-                    _isLoading.value = false
-                    return@launch
-                }
-                
-                authRepository.verifyOtp(tid, otp, fcmToken).fold(
-                    onSuccess = { _ ->
-                        onSuccess()
+                verifyOtpUseCase(VerifyOtpParams(tid, otp)).fold(
+                    onSuccess = { success ->
+                        if (success) {
+                            onSuccess()
+                        } else {
+                            _errorMessage.value = "Invalid OTP"
+                        }
                     },
                     onFailure = { throwable ->
                         _errorMessage.value = throwable.message ?: "Invalid OTP"
@@ -93,10 +108,17 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             try {
-                // Call the repository's logout method which handles
-                // FCM token deletion and token clearing
                 Log.d(TAG, "Initiating logout")
-                authRepository.logout()
+                logoutUseCase().fold(
+                    onSuccess = { 
+                        Log.d(TAG, "Logout successful")
+                        _isLoggedIn.value = false
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Logout failed", error)
+                        _errorMessage.value = "Failed to sign out: ${error.message}"
+                    }
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error during logout", e)
                 _errorMessage.value = "Failed to sign out: ${e.message}"
