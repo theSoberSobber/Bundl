@@ -4,11 +4,16 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bundl.app.data.local.OrderDao
-import com.bundl.app.data.local.OrderEntity
-import com.bundl.app.data.remote.api.OrderApiService
-import com.bundl.app.data.remote.api.PledgeRequest
 import com.bundl.app.domain.model.Order
+import com.bundl.app.domain.usecase.orders.ObserveLocalOrdersUseCase
+import com.bundl.app.domain.usecase.orders.SaveOrderLocallyUseCase
+import com.bundl.app.domain.usecase.orders.SaveOrderLocallyParams
+import com.bundl.app.domain.usecase.orders.GetOrderStatusUseCase
+import com.bundl.app.domain.usecase.orders.GetOrderStatusParams
+import com.bundl.app.domain.usecase.orders.UpdateOrderStatusUseCase
+import com.bundl.app.domain.usecase.orders.UpdateOrderStatusParams
+import com.bundl.app.domain.usecase.orders.GetActiveOrdersUseCase
+import com.bundl.app.domain.usecase.orders.GetActiveOrdersParams
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -19,21 +24,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-
-data class OrderStatusResponse(
-    val id: String,
-    val amountNeeded: String,
-    val totalPledge: String,
-    val totalUsers: Int,
-    val longitude: String,
-    val latitude: String,
-    val creatorId: String,
-    val platform: String,
-    val status: String,
-    val pledgeMap: Map<String, Int>,
-    val phoneNumerMap: Map<String, Int>? = null,
-    val note: String? = null
-)
 
 data class MyOrdersState(
     val localActiveOrders: List<Order> = emptyList(),
@@ -46,8 +36,11 @@ data class MyOrdersState(
 
 @HiltViewModel
 class MyOrdersViewModel @Inject constructor(
-    private val orderApiService: OrderApiService,
-    private val orderDao: OrderDao,
+    private val observeLocalOrdersUseCase: ObserveLocalOrdersUseCase,
+    private val saveOrderLocallyUseCase: SaveOrderLocallyUseCase,
+    private val getOrderStatusUseCase: GetOrderStatusUseCase,
+    private val updateOrderStatusUseCase: UpdateOrderStatusUseCase,
+    private val getActiveOrdersUseCase: GetActiveOrdersUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     
@@ -67,29 +60,32 @@ class MyOrdersViewModel @Inject constructor(
     
     init {
         Log.d("BUNDL_DEBUG", "Initializing MyOrdersViewModel")
-        // Start observing active orders from Room DB
+        // Start observing orders using use case
         viewModelScope.launch {
-            // Combine both active and non-active orders flows
-            combine(
-                orderDao.getActiveOrders(),
-                orderDao.getNonActiveOrders()
-            ) { activeEntities, nonActiveEntities ->
-                Log.d("BUNDL_DEBUG", "Received ${activeEntities.size} active orders and ${nonActiveEntities.size} non-active orders from DB")
-                Log.d("BUNDL_DEBUG", "Active order IDs: ${activeEntities.map { it.orderId }}")
-                Pair(activeEntities.map { it.toOrder() }, nonActiveEntities.map { it.toOrder() })
-            }.collect { (activeOrders, nonActiveOrders) ->
-                Log.d("BUNDL_DEBUG", "Updating state with ${activeOrders.size} active orders and ${nonActiveOrders.size} non-active orders")
-                Log.d("BUNDL_DEBUG", "Active order IDs in state update: ${activeOrders.map { it.id }}")
-                _state.update { it.copy(
-                    localActiveOrders = activeOrders,
-                    localNonActiveOrders = nonActiveOrders
-                )}
-                
-                // Start polling if we have active orders
-                if (activeOrders.isNotEmpty() && pollingJob?.isActive != true) {
-                    startPolling()
+            observeLocalOrdersUseCase().fold(
+                onSuccess = { flow ->
+                    flow.collect { localOrdersData ->
+                        Log.d("BUNDL_DEBUG", "Received ${localOrdersData.activeOrders.size} active orders and ${localOrdersData.nonActiveOrders.size} non-active orders")
+                        Log.d("BUNDL_DEBUG", "Active order IDs: ${localOrdersData.activeOrders.map { it.id }}")
+                        
+                        _state.update { 
+                            it.copy(
+                                localActiveOrders = localOrdersData.activeOrders,
+                                localNonActiveOrders = localOrdersData.nonActiveOrders
+                            )
+                        }
+                        
+                        // Start polling if we have active orders
+                        if (localOrdersData.activeOrders.isNotEmpty() && pollingJob?.isActive != true) {
+                            startPolling()
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    Log.e("BUNDL_DEBUG", "Error observing local orders", error)
+                    _state.update { it.copy(error = error.message) }
                 }
-            }
+            )
         }
         
         startCountdownTimer()
@@ -108,8 +104,8 @@ class MyOrdersViewModel @Inject constructor(
     fun addOrderToPledged(order: Order) {
         viewModelScope.launch {
             try {
-                Log.d("BUNDL_DEBUG", "Adding order to Room DB: ${order.id}")
-                Log.d("BUNDL_DEBUG", "Order details before Room - status: ${order.status}, platform: ${order.platform}, amount: ${order.amountNeeded}")
+                Log.d("BUNDL_DEBUG", "Adding order to local storage: ${order.id}")
+                Log.d("BUNDL_DEBUG", "Order details - status: ${order.status}, platform: ${order.platform}, amount: ${order.amountNeeded}")
                 Log.d("BUNDL_DEBUG", "More order details - creatorId: ${order.creatorId}, totalPledge: ${order.totalPledge}, totalUsers: ${order.totalUsers}")
                 Log.d("BUNDL_DEBUG", "Location details - lat: ${order.latitude}, lon: ${order.longitude}")
                 
@@ -117,27 +113,29 @@ class MyOrdersViewModel @Inject constructor(
                 val orderWithStatus = order.copy(status = "ACTIVE")
                 Log.d("BUNDL_DEBUG", "Order after status update: $orderWithStatus")
                 
-                val orderEntity = OrderEntity.fromOrder(orderWithStatus)
-                Log.d("BUNDL_DEBUG", "Created OrderEntity: $orderEntity")
+                saveOrderLocallyUseCase(SaveOrderLocallyParams(orderWithStatus)).fold(
+                    onSuccess = {
+                        Log.d("BUNDL_DEBUG", "Successfully added order to local storage: ${order.id}")
+                        
+                        // Start polling if not already started
+                        if (pollingJob?.isActive != true) {
+                            Log.d("BUNDL_DEBUG", "Starting polling for order updates")
+                            startPolling()
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e("BUNDL_DEBUG", "Error adding order to local storage: ${error.message}")
+                        showToast("Error saving order: ${error.message}")
+                    }
+                )
                 
-                orderDao.insertOrder(orderEntity)
-                Log.d("BUNDL_DEBUG", "Successfully added order to Room DB: ${order.id}")
-                
-                // Start polling if not already started
-                if (pollingJob?.isActive != true) {
-                    Log.d("BUNDL_DEBUG", "Starting polling for order updates")
-                    startPolling()
-                } else {
-                    Log.d("BUNDL_DEBUG", "Polling already active")
-                }
-
                 // Log current active orders from state
                 Log.d("BUNDL_DEBUG", "Current active orders in state: ${state.value.localActiveOrders.map { it.id }}")
                 
             } catch (e: Exception) {
-                Log.e("BUNDL_DEBUG", "Error adding order to Room DB", e)
+                Log.e("BUNDL_DEBUG", "Error adding order", e)
                 Log.e("BUNDL_DEBUG", "Order that failed: $order")
-                showToast("Error adding order to Room DB: ${e.message}")
+                showToast("Error adding order: ${e.message}")
             }
         }
     }
@@ -172,71 +170,50 @@ class MyOrdersViewModel @Inject constructor(
                 try {
                     Log.d("BUNDL_ORDERS", "Polling status for order: ${order.id}")
                     
-                    // Log the absolute raw response before any deserialization
-                    try {
-                        val rawResponse = orderApiService.getOrderStatusRaw(order.id)
-                        val rawString = rawResponse.string()
-                        Log.d("BUNDL_PHONE_NUMBERS_RAW", "ABSOLUTE RAW RESPONSE: $rawString")
-                        
-                        // Check if the raw string contains phoneNumerMap
-                        if (rawString.contains("phoneNumerMap")) {
-                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE CONTAINS phoneNumerMap!")
-                        } else {
-                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE DOES NOT CONTAIN phoneNumerMap")
-                        }
-                        
-                        // Check if the raw string contains phoneNumberMap (correct spelling)
-                        if (rawString.contains("phoneNumberMap")) {
-                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE CONTAINS phoneNumberMap!")
-                        } else {
-                            Log.d("BUNDL_PHONE_NUMBERS_RAW", "RAW RESPONSE DOES NOT CONTAIN phoneNumberMap")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("BUNDL_PHONE_NUMBERS_RAW", "Error getting raw response: ${e.message}")
-                        e.printStackTrace()
-                    }
-                    
-                    // Continue with normal API call
-                    val response = orderApiService.getOrderStatus(order.id)
-                    
-                    // Log the complete raw response with GSON
-                    val gson = GsonBuilder().setPrettyPrinting().create()
-                    Log.d("BUNDL_PHONE_NUMBERS", "Raw API response for order ${order.id}: ${gson.toJson(response)}")
-                    
-                    // Parse values
-                    val status = response.status.uppercase()
-                    val totalPledgeInt = response.totalPledge.replace(".00", "").toIntOrNull() ?: 0
-                    val amountNeededInt = response.amountNeeded.replace(".00", "").toIntOrNull() ?: 0
-                    val totalUsers = response.totalUsers
-                    
-                    Log.d("BUNDL_ORDERS", "Received status: $status for order: ${order.id}")
-                    Log.d("BUNDL_ORDERS", "Total pledge: $totalPledgeInt, Amount needed: $amountNeededInt")
-                    Log.d("BUNDL_PHONE_NUMBERS", "Response has phoneNumerMap: ${response.phoneNumerMap != null}, contents: ${response.phoneNumerMap}")
-                    Log.d("BUNDL_PHONE_NUMBERS", "Response has note: ${response.note != null}, contents: ${response.note}")
+                    getOrderStatusUseCase(GetOrderStatusParams(order.id)).fold(
+                        onSuccess = { orderStatus ->
+                            // Log the response
+                            val gson = GsonBuilder().setPrettyPrinting().create()
+                            Log.d("BUNDL_PHONE_NUMBERS", "Order status for ${order.id}: ${gson.toJson(orderStatus)}")
+                            
+                            // Parse values
+                            val status = orderStatus.status.uppercase()
+                            val totalPledgeInt = orderStatus.totalPledge.replace(".00", "").toIntOrNull() ?: 0
+                            val amountNeededInt = orderStatus.amountNeeded.replace(".00", "").toIntOrNull() ?: 0
+                            val totalUsers = orderStatus.totalUsers
+                            
+                            Log.d("BUNDL_ORDERS", "Received status: $status for order: ${order.id}")
+                            Log.d("BUNDL_ORDERS", "Total pledge: $totalPledgeInt, Amount needed: $amountNeededInt")
+                            Log.d("BUNDL_PHONE_NUMBERS", "Response has phoneNumerMap: ${orderStatus.phoneNumberMap != null}, contents: ${orderStatus.phoneNumberMap}")
+                            Log.d("BUNDL_PHONE_NUMBERS", "Response has note: ${orderStatus.note != null}, contents: ${orderStatus.note}")
 
-                    if (status != "ACTIVE") {
-                        // Instead of deleting, update the status to keep it in history
-                        orderDao.updateOrderStatusWithPhoneMap(
-                            orderId = order.id,
-                            status = status,
-                            totalPledge = totalPledgeInt,
-                            totalUsers = totalUsers,
-                            phoneNumberMap = response.phoneNumerMap,
-                            note = response.note
-                        )
-                        Log.d("BUNDL_ORDERS", "Moved order to history: ${order.id}, status: $status")
-                    } else {
-                        // Update order status in Room DB
-                        orderDao.updateOrderStatusWithPhoneMap(
-                            orderId = order.id,
-                            status = status,
-                            totalPledge = totalPledgeInt,
-                            totalUsers = totalUsers,
-                            phoneNumberMap = response.phoneNumerMap,
-                            note = response.note
-                        )
-                        Log.d("BUNDL_ORDERS", "Updated active order: ${order.id}, pledge: $totalPledgeInt")
-                    }
+                            // Update order status using use case
+                            updateOrderStatusUseCase(
+                                UpdateOrderStatusParams(
+                                    orderId = order.id,
+                                    status = status,
+                                    totalPledge = orderStatus.totalPledge,
+                                    totalUsers = totalUsers,
+                                    pledgeMap = orderStatus.pledgeMap,
+                                    phoneNumberMap = orderStatus.phoneNumberMap
+                                )
+                            ).fold(
+                                onSuccess = {
+                                    if (status != "ACTIVE") {
+                                        Log.d("BUNDL_ORDERS", "Moved order to history: ${order.id}, status: $status")
+                                    } else {
+                                        Log.d("BUNDL_ORDERS", "Updated active order: ${order.id}, pledge: $totalPledgeInt")
+                                    }
+                                },
+                                onFailure = { error ->
+                                    Log.e("BUNDL_ORDERS", "Error updating order status: ${error.message}")
+                                }
+                            )
+                        },
+                        onFailure = { error ->
+                            Log.e("BUNDL_ORDERS", "Error getting order status for ${order.id}: ${error.message}")
+                        }
+                    )
                 } catch (e: Exception) {
                     Log.e("BUNDL_ORDERS", "Error polling order ${order.id}: ${e.message}")
                     e.printStackTrace()
@@ -262,15 +239,23 @@ class MyOrdersViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 Log.d("BUNDL_ORDERS", "Refreshing orders with radius: ${state.value.searchRadiusKm}km")
-                val response = orderApiService.getActiveOrders(
-                    latitude = 0.0, // TODO: Get actual location
-                    longitude = 0.0,
-                    radiusKm = state.value.searchRadiusKm
-                )
                 
-                response.forEach { order ->
-                    addOrderToPledged(order)
-                }
+                getActiveOrdersUseCase(
+                    GetActiveOrdersParams(
+                        latitude = 0.0, // TODO: Get actual location
+                        longitude = 0.0,
+                        radiusKm = state.value.searchRadiusKm
+                    )
+                ).fold(
+                    onSuccess = { orders ->
+                        orders.forEach { order ->
+                            addOrderToPledged(order)
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e("BUNDL_ORDERS", "Error refreshing orders: ${error.message}")
+                    }
+                )
             } catch (e: Exception) {
                 Log.e("BUNDL_ORDERS", "Error refreshing orders", e)
             }
@@ -281,21 +266,31 @@ class MyOrdersViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                // First, load orders from local DB
-                orderDao.getActiveOrders().collect { entities ->
-                    val orders = entities.map { it.toOrder() }
-                    Log.d("BUNDL_ORDERS", "Loaded ${orders.size} local active orders")
-                    
-                    // Log each order's phoneNumberMap
-                    orders.forEach { order ->
-                        Log.d("BUNDL_PHONE_NUMBERS", "Local order ${order.id} phone map: ${order.phoneNumberMap}")
+                // Load orders from local storage using use case
+                observeLocalOrdersUseCase().fold(
+                    onSuccess = { flow ->
+                        flow.collect { localOrdersData ->
+                            Log.d("BUNDL_ORDERS", "Loaded ${localOrdersData.activeOrders.size} local active orders")
+                            
+                            // Log each order's phoneNumberMap
+                            localOrdersData.activeOrders.forEach { order ->
+                                Log.d("BUNDL_PHONE_NUMBERS", "Local order ${order.id} phone map: ${order.phoneNumberMap}")
+                            }
+                            
+                            _state.update { 
+                                it.copy(
+                                    localActiveOrders = localOrdersData.activeOrders,
+                                    localNonActiveOrders = localOrdersData.nonActiveOrders,
+                                    isLoading = false
+                                )
+                            }
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e("BUNDL_ORDERS", "Error loading order history: ${error.message}")
+                        _state.update { it.copy(isLoading = false, error = error.message) }
                     }
-                    
-                    _state.update { it.copy(
-                        localActiveOrders = orders,
-                        isLoading = false
-                    )}
-                }
+                )
                 
             } catch (e: Exception) {
                 Log.e("BUNDL_ORDERS", "Error loading order history", e)

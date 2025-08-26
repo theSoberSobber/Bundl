@@ -6,11 +6,15 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bundl.app.BundlApplication
-import com.bundl.app.data.remote.api.CreditsService
 import com.bundl.app.domain.model.CreditPackage
-import com.bundl.app.domain.payment.PaymentService
-import com.bundl.app.domain.repository.CreditsRepository
+import com.bundl.app.domain.usecase.credits.GetCreditsUseCase
+import com.bundl.app.domain.usecase.credits.GetCreditPackagesUseCase
+import com.bundl.app.domain.usecase.credits.PurchaseCreditsUseCase
+import com.bundl.app.domain.usecase.credits.PurchaseCreditsParams
+import com.bundl.app.domain.usecase.credits.StartPaymentUseCase
+import com.bundl.app.domain.usecase.credits.StartPaymentParams
+import com.bundl.app.domain.usecase.credits.VerifyCreditOrderUseCase
+import com.bundl.app.domain.usecase.credits.VerifyCreditOrderParams
 import com.cashfree.pg.core.api.utils.CFErrorResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,9 +42,11 @@ data class CreditScreenState(
 
 @HiltViewModel
 class CreditsViewModel @Inject constructor(
-    private val creditsService: CreditsService,
-    private val creditsRepository: CreditsRepository,
-    private val paymentService: PaymentService,
+    private val getCreditsUseCase: GetCreditsUseCase,
+    private val getCreditPackagesUseCase: GetCreditPackagesUseCase,
+    private val purchaseCreditsUseCase: PurchaseCreditsUseCase,
+    private val startPaymentUseCase: StartPaymentUseCase,
+    private val verifyCreditOrderUseCase: VerifyCreditOrderUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     
@@ -91,13 +97,22 @@ class CreditsViewModel @Inject constructor(
     private fun fetchUserCredits() {
         viewModelScope.launch {
             try {
-                val creditsResponse = creditsService.getCredits()
-                _state.update { it.copy(currentCredits = creditsResponse.credits) }
-                Log.d(TAG, "User credits retrieved: ${creditsResponse.credits}")
-                Log.d("BUNDL_CREDITS", "Credits screen - User credits retrieved: ${creditsResponse.credits}")
+                getCreditsUseCase().fold(
+                    onSuccess = { creditsInfo ->
+                        _state.update { it.copy(currentCredits = creditsInfo.credits) }
+                        Log.d(TAG, "User credits retrieved: ${creditsInfo.credits}")
+                        Log.d("BUNDL_CREDITS", "Credits screen - User credits retrieved: ${creditsInfo.credits}")
+                    },
+                    onFailure = { e ->
+                        Log.e(TAG, "Error fetching user credits", e)
+                        Log.e("BUNDL_CREDITS", "Credits screen - Error fetching user credits: ${e.message}")
+                        _state.update { it.copy(errorMessage = "Failed to load credits: ${e.message}") }
+                    }
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching user credits", e)
                 Log.e("BUNDL_CREDITS", "Credits screen - Error fetching user credits: ${e.message}")
+                _state.update { it.copy(errorMessage = "Failed to load credits: ${e.message}") }
             }
         }
     }
@@ -107,22 +122,25 @@ class CreditsViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
             
             try {
-                // In a real implementation, this would call the API
-                // For now, we'll simulate the API call with a delay
-                delay(1000) // Simulate network delay
-                
-                // This would be the actual API call in production:
-                // val packages = creditsService.getCreditPackages()
-                
-                // For now we'll use mock data while the API endpoint is being developed
-                loadMockPackages()
-                
-                Log.d(TAG, "Fetched credit packages: ${state.value.packages.size} packages")
-                Log.d("BUNDL_CREDITS", "Available packages: ${state.value.packages.map { it.name }}")
+                getCreditPackagesUseCase().fold(
+                    onSuccess = { packages ->
+                        _state.update { it.copy(packages = packages) }
+                        Log.d(TAG, "Fetched credit packages: ${packages.size} packages")
+                        Log.d("BUNDL_CREDITS", "Available packages: ${packages.map { it.name }}")
+                    },
+                    onFailure = { e ->
+                        // Fall back to mock data if API is not ready
+                        Log.w(TAG, "API not available, using mock data", e)
+                        loadMockPackages()
+                        Log.d(TAG, "Fetched mock credit packages: ${state.value.packages.size} packages")
+                        Log.d("BUNDL_CREDITS", "Available mock packages: ${state.value.packages.map { it.name }}")
+                    }
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching credit packages", e)
                 Log.e("BUNDL_CREDITS", "Error fetching packages: ${e.message}")
-                _state.update { it.copy(errorMessage = "Failed to load credit packages: ${e.message}") }
+                // Fall back to mock data
+                loadMockPackages()
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
@@ -135,12 +153,7 @@ class CreditsViewModel @Inject constructor(
             
             try {
                 // Create an order for the purchase
-                val orderResult = paymentService.createOrder(
-                    credits = creditPackage.credits,
-                    currency = "INR"
-                )
-                
-                orderResult.fold(
+                purchaseCreditsUseCase(PurchaseCreditsParams(creditPackage)).fold(
                     onSuccess = { orderResponse ->
                         _state.update { 
                             it.copy(
@@ -152,12 +165,10 @@ class CreditsViewModel @Inject constructor(
                         Log.d("BUNDL_CREDITS", "Order created for ${creditPackage.credits} credits: ${orderResponse.orderId}")
                         
                         // Start UPI payment
-                        val paymentResult = paymentService.startUpiPayment(
+                        startPaymentUseCase(StartPaymentParams(
                             orderId = orderResponse.orderId,
                             sessionId = orderResponse.sessionId
-                        )
-                        
-                        paymentResult.fold(
+                        )).fold(
                             onSuccess = {
                                 Log.d(TAG, "Payment initiated for order: ${orderResponse.orderId}")
                                 Log.d("BUNDL_CREDITS", "Payment initiated for order: ${orderResponse.orderId}")
@@ -238,80 +249,84 @@ class CreditsViewModel @Inject constructor(
                 Log.d("BUNDL_CREDITS", "Verifying payment (${elapsedSeconds}s elapsed)")
                 
                 try {
-                    // Create request body with orderId
-                    val request = mapOf("orderId" to orderId)
-                    
-                    // Call the /credits/verify endpoint
-                    val verifyResult = creditsService.verifyCreditOrder(request)
-                    Log.d(TAG, "Verify result: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
-                    Log.d("BUNDL_CREDITS", "Verify result: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
-                    
-                    // Show Toast with raw response
-                    showToast("Poll #${elapsedSeconds/3 + 1}: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
-                    
-                    if (verifyResult.success) {
-                        // Payment verification successful
-                        _state.update { 
-                            it.copy(
-                                isVerifying = false,
-                                isProcessing = false,
-                                successMessage = if (verifyResult.amount > 0) 
-                                    "Payment successful! ${verifyResult.amount} credits added to your account."
-                                else
-                                    "Payment successful! Credits will be added to your account soon.",
-                                currentOrderId = null
-                            )
-                        }
-                        
-                        // Show final success Toast
-                        showToast("VERIFICATION SUCCESS: Credits added!")
-                        
-                        // Refresh credits
-                        fetchUserCredits()
-                        
-                        Log.d(TAG, "Payment verified successfully for order: $orderId")
-                        Log.d("BUNDL_CREDITS", "Payment verified successfully!")
-                        success = true
-                        return@launch
-                    } else {
-                        // Not successful yet, check order status
-                        val statusMessage = when(verifyResult.orderStatus) {
-                            "ACTIVE" -> "Payment processing..."
-                            "FAILED" -> {
+                    // Call the /credits/verify endpoint using use case
+                    verifyCreditOrderUseCase(VerifyCreditOrderParams(orderId)).fold(
+                        onSuccess = { verifyResult ->
+                            Log.d(TAG, "Verify result: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
+                            Log.d("BUNDL_CREDITS", "Verify result: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
+                            
+                            // Show Toast with raw response
+                            showToast("Poll #${elapsedSeconds/3 + 1}: success=${verifyResult.success}, status=${verifyResult.orderStatus}, amount=${verifyResult.amount}")
+                            
+                            if (verifyResult.success) {
+                                // Payment verification successful
                                 _state.update { 
                                     it.copy(
                                         isVerifying = false,
                                         isProcessing = false,
-                                        errorMessage = "Payment failed. Please try again.",
+                                        successMessage = if (verifyResult.amount > 0) 
+                                            "Payment successful! ${verifyResult.amount} credits added to your account."
+                                        else
+                                            "Payment successful! Credits will be added to your account soon.",
                                         currentOrderId = null
                                     )
                                 }
                                 
-                                // Show failure Toast
-                                showToast("VERIFICATION FAILED: Order status = FAILED")
+                                // Show final success Toast
+                                showToast("VERIFICATION SUCCESS: Credits added!")
                                 
-                                Log.w(TAG, "Payment verification failed for order: $orderId")
-                                Log.w("BUNDL_CREDITS", "Payment verification failed")
+                                // Refresh credits
+                                fetchUserCredits()
+                                
+                                Log.d(TAG, "Payment verified successfully for order: $orderId")
+                                Log.d("BUNDL_CREDITS", "Payment verified successfully!")
+                                success = true
                                 return@launch
+                            } else {
+                                // Not successful yet, check order status
+                                val statusMessage = when(verifyResult.orderStatus) {
+                                    "ACTIVE" -> "Payment processing..."
+                                    "FAILED" -> {
+                                        _state.update { 
+                                            it.copy(
+                                                isVerifying = false,
+                                                isProcessing = false,
+                                                errorMessage = "Payment failed. Please try again.",
+                                                currentOrderId = null
+                                            )
+                                        }
+                                        
+                                        // Show failure Toast
+                                        showToast("VERIFICATION FAILED: Order status = FAILED")
+                                        
+                                        Log.w(TAG, "Payment verification failed for order: $orderId")
+                                        Log.w("BUNDL_CREDITS", "Payment verification failed")
+                                        return@launch
+                                    }
+                                    else -> "Checking payment status..."
+                                }
+                                
+                                // Update state with status message
+                                _state.update { 
+                                    it.copy(
+                                        statusMessage = statusMessage
+                                    )
+                                }
                             }
-                            else -> "Checking payment status..."
+                        },
+                        onFailure = { e ->
+                            Log.e(TAG, "Exception verifying payment for order: $orderId", e)
+                            Log.e("BUNDL_CREDITS", "Exception verifying payment: ${e.message}")
+                            
+                            // Show error Toast
+                            showToast("VERIFICATION ERROR: ${e.message}")
+                            
+                            // Continue polling despite error
                         }
-                        
-                        // Update state with status message
-                        _state.update { 
-                            it.copy(
-                                statusMessage = statusMessage
-                            )
-                        }
-                    }
+                    )
                 } catch (e: Exception) {
-                    Log.e(TAG, "Exception verifying payment for order: $orderId", e)
-                    Log.e("BUNDL_CREDITS", "Exception verifying payment: ${e.message}")
-                    
-                    // Show error Toast
-                    showToast("POLL ERROR: ${e.message}")
-                    
-                    // Continue polling despite error
+                    Log.e(TAG, "Unexpected error during verification", e)
+                    showToast("UNEXPECTED ERROR: ${e.message}")
                 }
                 
                 // Wait before next poll

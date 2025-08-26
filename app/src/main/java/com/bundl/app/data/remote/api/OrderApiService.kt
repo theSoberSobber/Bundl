@@ -7,7 +7,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Path
-import com.bundl.app.presentation.orders.OrderStatusResponse
+import com.bundl.app.data.remote.dto.OrderStatusResponse
 import okhttp3.ResponseBody
 
 data class PledgeRequest(

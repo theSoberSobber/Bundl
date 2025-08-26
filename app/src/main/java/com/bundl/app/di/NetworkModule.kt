@@ -11,7 +11,7 @@ import com.bundl.app.utils.network.AuthAuthenticator
 import com.bundl.app.utils.network.AuthInterceptor
 import com.bundl.app.utils.network.TimingInterceptor
 import com.bundl.app.domain.payment.PaymentService
-import com.bundl.app.presentation.orders.OrderStatusResponse
+import com.bundl.app.data.remote.dto.OrderStatusResponse
 import com.bundl.app.presentation.orders.OrderStatusResponseDeserializer
 import com.google.gson.GsonBuilder
 import dagger.Module
