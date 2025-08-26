@@ -3,7 +3,7 @@ package com.bundl.app.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bundl.app.domain.repository.AuthRepository
-import com.bundl.app.utils.DeviceUtils
+import com.bundl.app.data.utils.DeviceUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

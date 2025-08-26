@@ -2,9 +2,13 @@ package com.bundl.app.di
 
 import com.bundl.app.data.repository.ApiKeyRepositoryImpl
 import com.bundl.app.data.repository.AuthRepositoryImpl
+import com.bundl.app.data.repository.DeviceRepositoryImpl
+import com.bundl.app.data.repository.LocationRepositoryImpl
 import com.bundl.app.data.repository.OrderRepositoryImpl
 import com.bundl.app.domain.repository.ApiKeyRepository
 import com.bundl.app.domain.repository.AuthRepository
+import com.bundl.app.domain.repository.DeviceRepository
+import com.bundl.app.domain.repository.LocationRepository
 import com.bundl.app.domain.repository.OrderRepository
 import dagger.Binds
 import dagger.Module
@@ -33,4 +37,16 @@ abstract class RepositoryModule {
     abstract fun bindOrderRepository(
         orderRepositoryImpl: OrderRepositoryImpl
     ): OrderRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindDeviceRepository(
+        deviceRepositoryImpl: DeviceRepositoryImpl
+    ): DeviceRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindLocationRepository(
+        locationRepositoryImpl: LocationRepositoryImpl
+    ): LocationRepository
 } 

@@ -20,7 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.bundl.app.domain.maps.MapProvider
 import com.bundl.app.domain.model.Order
-import com.bundl.app.utils.LocationManager
+import com.bundl.app.data.utils.LocationManager
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.Style

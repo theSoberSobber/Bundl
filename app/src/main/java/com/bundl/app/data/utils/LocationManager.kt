@@ -1,4 +1,4 @@
-package com.bundl.app.utils
+package com.bundl.app.data.utils
 
 import android.Manifest
 import android.content.Context

@@ -53,7 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bundl.app.R
 import com.bundl.app.presentation.theme.Blue
-import com.bundl.app.utils.DeviceUtils
+import com.bundl.app.data.utils.DeviceUtils
 import com.google.android.gms.auth.api.identity.GetPhoneNumberHintIntentRequest
 import com.google.android.gms.auth.api.identity.Identity
 import dagger.hilt.android.qualifiers.ApplicationContext

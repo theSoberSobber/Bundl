@@ -5,7 +5,7 @@ import com.bundl.app.data.remote.api.AuthApiService
 import com.bundl.app.data.remote.dto.OtpSendRequestDto
 import com.bundl.app.domain.model.ApiKey
 import com.bundl.app.domain.repository.ApiKeyRepository
-import com.bundl.app.utils.DeviceUtils
+import com.bundl.app.data.utils.DeviceUtils
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.*
@@ -69,6 +69,29 @@ class ApiKeyRepositoryImpl @Inject constructor(
             val sendOtpRequest = OtpSendRequestDto(phoneNumber)
             apiKeyService.serviceSendOtp(sendOtpRequest)
             Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun getCredits(): Result<com.bundl.app.domain.repository.CreditsInfo> {
+        return try {
+            val creditsResponse = apiKeyService.getCredits()
+            Result.success(com.bundl.app.domain.repository.CreditsInfo(creditsResponse.credits))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun setCreditMode(mode: String): Result<Unit> {
+        return try {
+            val request = mapOf("mode" to mode)
+            val response = apiKeyService.setCreditMode(request)
+            if (response["success"] == true) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update credit mode"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

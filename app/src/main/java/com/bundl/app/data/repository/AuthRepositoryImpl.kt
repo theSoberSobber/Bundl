@@ -9,6 +9,7 @@ import com.bundl.app.data.remote.dto.OtpVerifyRequestDto
 import com.bundl.app.data.remote.dto.RefreshTokenRequestDto
 import com.bundl.app.domain.model.AuthResponse
 import com.bundl.app.domain.model.OtpSendResponse
+import com.bundl.app.domain.model.UserStats
 import com.bundl.app.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -80,6 +81,16 @@ class AuthRepositoryImpl @Inject constructor(
                 Result.success(response)
             }
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun getUserStats(): Result<UserStats> {
+        return try {
+            val userStats = authApiService.getUserStats()
+            Result.success(userStats)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user stats", e)
             Result.failure(e)
         }
     }

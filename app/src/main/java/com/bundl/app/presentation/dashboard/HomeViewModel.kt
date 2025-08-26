@@ -3,23 +3,36 @@ package com.bundl.app.presentation.dashboard
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.messaging.FirebaseMessaging
-import com.bundl.app.data.remote.api.ApiKeyService
-import com.bundl.app.data.remote.api.AuthApiService
-import com.bundl.app.data.remote.api.OrderApiService
-import com.bundl.app.data.remote.api.PledgeRequest
-import com.bundl.app.data.remote.api.CreateOrderRequest
-import com.bundl.app.domain.maps.MapProvider
 import com.bundl.app.domain.model.Order
 import com.bundl.app.domain.model.UserStats
-import com.bundl.app.domain.repository.ApiKeyRepository
-import com.bundl.app.domain.repository.AuthRepository
-import com.bundl.app.domain.repository.OrderRepository
-import com.bundl.app.utils.DeviceUtils
-import com.bundl.app.utils.LocationManager
+import com.bundl.app.domain.usecase.auth.CheckLoginStatusUseCase
+import com.bundl.app.domain.usecase.auth.GetUserStatsUseCase
+import com.bundl.app.domain.usecase.auth.LogoutUseCase
+import com.bundl.app.domain.usecase.credits.GetCreditsUseCase
+import com.bundl.app.domain.usecase.credits.SetCreditModeParams
+import com.bundl.app.domain.usecase.credits.SetCreditModeUseCase
+import com.bundl.app.domain.usecase.device.GetDeviceInfoUseCase
+import com.bundl.app.domain.usecase.location.GetCurrentLocationUseCase
+import com.bundl.app.domain.usecase.location.StartLocationUpdatesUseCase
+import com.bundl.app.domain.usecase.location.StopLocationUpdatesUseCase
+import com.bundl.app.domain.usecase.maps.AnimateCameraParams
+import com.bundl.app.domain.usecase.maps.AnimateCameraUseCase
+import com.bundl.app.domain.usecase.maps.FitMapToOrdersParams
+import com.bundl.app.domain.usecase.maps.FitMapToOrdersUseCase
+import com.bundl.app.domain.usecase.maps.SelectOrderOnMapParams
+import com.bundl.app.domain.usecase.maps.SelectOrderOnMapUseCase
+import com.bundl.app.domain.usecase.maps.ZoomToLocationParams
+import com.bundl.app.domain.usecase.maps.ZoomToLocationUseCase
+import com.bundl.app.domain.usecase.orders.CreateOrderParams
+import com.bundl.app.domain.usecase.orders.CreateOrderUseCase
+import com.bundl.app.domain.usecase.orders.GetActiveOrdersParams
+import com.bundl.app.domain.usecase.orders.GetActiveOrdersUseCase
+import com.bundl.app.domain.usecase.orders.PledgeToOrderParams
+import com.bundl.app.domain.usecase.orders.PledgeToOrderUseCase
+import com.bundl.app.domain.repository.LocationData
+import com.bundl.app.presentation.navigation.Route
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -31,8 +44,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import com.bundl.app.presentation.navigation.Route
 import javax.inject.Inject
 
 data class HomeState(
@@ -51,15 +62,22 @@ data class HomeState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val apiKeyRepository: ApiKeyRepository,
-    private val authRepository: AuthRepository,
-    private val orderRepository: OrderRepository,
-    private val deviceUtils: DeviceUtils,
-    private val apiKeyService: ApiKeyService,
-    private val authApiService: AuthApiService,
-    private val orderApiService: OrderApiService,
-    private val mapProvider: MapProvider,
-    private val locationManager: LocationManager,
+    private val checkLoginStatusUseCase: CheckLoginStatusUseCase,
+    private val getUserStatsUseCase: GetUserStatsUseCase,
+    private val logoutUseCase: LogoutUseCase,
+    private val getCreditsUseCase: GetCreditsUseCase,
+    private val setCreditModeUseCase: SetCreditModeUseCase,
+    private val getActiveOrdersUseCase: GetActiveOrdersUseCase,
+    private val pledgeToOrderUseCase: PledgeToOrderUseCase,
+    private val createOrderUseCase: CreateOrderUseCase,
+    private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
+    private val startLocationUpdatesUseCase: StartLocationUpdatesUseCase,
+    private val stopLocationUpdatesUseCase: StopLocationUpdatesUseCase,
+    private val getDeviceInfoUseCase: GetDeviceInfoUseCase,
+    private val fitMapToOrdersUseCase: FitMapToOrdersUseCase,
+    private val selectOrderOnMapUseCase: SelectOrderOnMapUseCase,
+    private val animateCameraUseCase: AnimateCameraUseCase,
+    private val zoomToLocationUseCase: ZoomToLocationUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     
@@ -74,7 +92,7 @@ class HomeViewModel @Inject constructor(
     private val creditsRefreshInterval = 30000L // 30 seconds
     
     // Store initial location
-    private var initialLocation = locationManager.currentLocation.value
+    private var initialLocation = LocationData(12.9716, 77.5946, false)
     
     private var hasInitiallyFitMap = false  // Add this flag at the class level near other private vars
     
@@ -85,27 +103,57 @@ class HomeViewModel @Inject constructor(
     init {
         // Get FCM token and register device if user is logged in
         viewModelScope.launch {
-            if (authRepository.isLoggedIn().first()) {
-                Log.d(TAG, "User is logged in, proceeding with initialization")
-                getFcmToken()
-                fetchUserStats()
-                fetchCreditsInfo()
-                fetchActiveOrders()
-                
-                // Add a delay and refresh credits again to ensure they're loaded
-                delay(2000)
-                Log.d(TAG, "Refreshing credits after delay to ensure they're loaded")
-                Log.d("BUNDL_CREDITS", "Performing delayed refresh to ensure credits are loaded")
-                fetchCreditsInfo()
-                
-                startCreditsPolling()
-                startCountdownTimer()
-                
-                // Start observing location changes
-                observeLocationChanges()
-            } else {
-                Log.d(TAG, "User is not logged in, skipping initialization")
-            }
+            checkLoginStatusUseCase().fold(
+                onSuccess = { isLoggedIn ->
+                    if (isLoggedIn) {
+                        Log.d(TAG, "User is logged in, proceeding with initialization")
+                        initializeApp()
+                    } else {
+                        Log.d(TAG, "User is not logged in, skipping initialization")
+                    }
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error checking login status", e)
+                    _state.update { it.copy(errorMessage = "Error checking login status: ${e.message}") }
+                }
+            )
+        }
+    }
+    
+    private suspend fun initializeApp() {
+        try {
+            // Get device info (includes FCM token)
+            getDeviceInfoUseCase().fold(
+                onSuccess = { deviceInfo ->
+                    _fcmToken.value = deviceInfo.fcmToken
+                    Log.d(TAG, "Device info retrieved: ${deviceInfo.deviceId}, FCM: ${deviceInfo.fcmToken}")
+                    // TODO: Register device with backend when API is available
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error getting device info", e)
+                    _state.update { it.copy(errorMessage = "Failed to get device info: ${e.message}") }
+                }
+            )
+            
+            // Fetch initial data
+            fetchUserStats()
+            fetchCreditsInfo()
+            fetchActiveOrders()
+            
+            // Add a delay and refresh credits again to ensure they're loaded
+            delay(2000)
+            Log.d(TAG, "Refreshing credits after delay to ensure they're loaded")
+            Log.d("BUNDL_CREDITS", "Performing delayed refresh to ensure credits are loaded")
+            fetchCreditsInfo()
+            
+            startCreditsPolling()
+            startCountdownTimer()
+            
+            // Start observing location changes
+            observeLocationChanges()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during app initialization", e)
+            _state.update { it.copy(errorMessage = "Error during initialization: ${e.message}") }
         }
     }
     
@@ -115,17 +163,33 @@ class HomeViewModel @Inject constructor(
         stopCountdownTimer()
         
         // Stop location updates when ViewModel is cleared
-        locationManager.stopLocationUpdates()
-        Log.d(TAG, "ViewModel cleared, stopping location updates")
+        viewModelScope.launch {
+            stopLocationUpdatesUseCase().fold(
+                onSuccess = {
+                    Log.d(TAG, "Location updates stopped successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error stopping location updates", e)
+                }
+            )
+        }
+        Log.d(TAG, "ViewModel cleared")
     }
     
     private fun observeLocationChanges() {
-        // Start location updates to track user movement
-        locationManager.startLocationUpdates()
-        
-        // Observe location changes continually but only update markers, not the camera
         viewModelScope.launch {
-            locationManager.currentLocation.collectLatest { locationData ->
+            // Start location updates
+            startLocationUpdatesUseCase().fold(
+                onSuccess = {
+                    Log.d(TAG, "Location updates started successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error starting location updates", e)
+                }
+            )
+            
+            // Observe location changes continually but only update markers, not the camera
+            getCurrentLocationUseCase.asFlow().collectLatest { locationData ->
                 if (locationData.isFromUser) {
                     // Store updated location
                     initialLocation = locationData
@@ -143,24 +207,21 @@ class HomeViewModel @Inject constructor(
     fun setCreditMode(mode: String) {
         viewModelScope.launch {
             _state.update { it.copy(isUpdatingCreditMode = true) }
-            try {
-                val request = mapOf("mode" to mode)
-                val response = apiKeyService.setCreditMode(request)
-                if (response["success"] == true) {
+            
+            setCreditModeUseCase(SetCreditModeParams(mode)).fold(
+                onSuccess = {
                     _state.update { it.copy(creditMode = mode) }
                     Log.d(TAG, "Credit mode updated to: $mode")
                     // Refresh stats after mode change
                     fetchUserStats(showLoading = false)
-                } else {
-                    _state.update { it.copy(errorMessage = "Failed to update credit mode") }
-                    Log.e(TAG, "Failed to update credit mode: $response")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Failed to update credit mode", e)
+                    _state.update { it.copy(errorMessage = "Failed to update credit mode: ${e.message}") }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error updating credit mode", e)
-                _state.update { it.copy(errorMessage = "Error updating credit mode: ${e.message}") }
-            } finally {
-                _state.update { it.copy(isUpdatingCreditMode = false) }
-            }
+            )
+            
+            _state.update { it.copy(isUpdatingCreditMode = false) }
         }
     }
 
@@ -221,84 +282,56 @@ class HomeViewModel @Inject constructor(
         _state.update { it.copy(secondsUntilRefresh = 30) }
     }
     
-    private fun getFcmToken() {
-        viewModelScope.launch {
-            try {
-                val token = FirebaseMessaging.getInstance().token.await()
-                _fcmToken.value = token
-                Log.d(TAG, "FCM Token retrieved: $token")
-                registerDevice(token)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error getting FCM token", e)
-                _state.update { it.copy(errorMessage = "Failed to get FCM token: ${e.message}") }
-            }
-        }
-    }
-    
-    private suspend fun registerDevice(fcmToken: String) {
-        try {
-            val deviceId = deviceUtils.getDeviceHash()
-            val deviceInfo = "Android"
-            
-            // This API endpoint doesn't exist yet, so we'll just log the intent
-            Log.d(TAG, "Would register device with ID: $deviceId and token: $fcmToken")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error preparing device registration", e)
-            _state.update { it.copy(errorMessage = "Error preparing device registration: ${e.message}") }
-        }
-    }
-    
     fun fetchCreditsInfo(showLoading: Boolean = true) {
         viewModelScope.launch {
             if (showLoading) {
                 _state.update { it.copy(isLoading = true) }
             }
             
-            try {
-                // Only fetch credits using the existing endpoint - don't fetch credit mode
-                val creditsResponse = apiKeyService.getCredits()
-                
-                // Special debugging for credits response
-                Log.d(TAG, "CREDITS RESPONSE RAW: $creditsResponse")
-                Log.d("BUNDL_CREDITS", "CREDITS RESPONSE RAW: $creditsResponse")
-                Log.d(TAG, "CREDITS TYPE: ${creditsResponse.javaClass}")
-                Log.d("BUNDL_CREDITS", "CREDITS TYPE: ${creditsResponse.javaClass}")
-                Log.d(TAG, "CREDITS VALUE: ${creditsResponse.credits}")
-                Log.d("BUNDL_CREDITS", "CREDITS VALUE: ${creditsResponse.credits}")
-                
-                // Update state in a more direct way to ensure it's actually updated
-                val newCredits = creditsResponse.credits
-                
-                _state.update { 
-                    Log.d(TAG, "UPDATING STATE: Old credits=${it.userCredits}, New credits=$newCredits")
-                    Log.d("BUNDL_CREDITS", "UPDATING STATE: Old credits=${it.userCredits}, New credits=$newCredits")
+            getCreditsUseCase().fold(
+                onSuccess = { creditsResponse ->
+                    // Special debugging for credits response
+                    Log.d(TAG, "CREDITS RESPONSE RAW: $creditsResponse")
+                    Log.d("BUNDL_CREDITS", "CREDITS RESPONSE RAW: $creditsResponse")
+                    Log.d(TAG, "CREDITS TYPE: ${creditsResponse.javaClass}")
+                    Log.d("BUNDL_CREDITS", "CREDITS TYPE: ${creditsResponse.javaClass}")
+                    Log.d(TAG, "CREDITS VALUE: ${creditsResponse.credits}")
+                    Log.d("BUNDL_CREDITS", "CREDITS VALUE: ${creditsResponse.credits}")
                     
-                    it.copy(
-                        userCredits = newCredits,
-                        cashbackPoints = 0 // Not available in current API
-                        // Don't update creditMode since endpoint doesn't exist
-                    )
+                    // Update state in a more direct way to ensure it's actually updated
+                    val newCredits = creditsResponse.credits
+                    
+                    _state.update { 
+                        Log.d(TAG, "UPDATING STATE: Old credits=${it.userCredits}, New credits=$newCredits")
+                        Log.d("BUNDL_CREDITS", "UPDATING STATE: Old credits=${it.userCredits}, New credits=$newCredits")
+                        
+                        it.copy(
+                            userCredits = newCredits,
+                            cashbackPoints = 0 // Not available in current API
+                            // Don't update creditMode since endpoint doesn't exist
+                        )
+                    }
+                    
+                    // Verify the update happened
+                    Log.d(TAG, "CREDITS STATE AFTER UPDATE: ${_state.value.userCredits}")
+                    Log.d("BUNDL_CREDITS", "CREDITS STATE AFTER UPDATE: ${_state.value.userCredits}")
+                    
+                    // Log the current state after update
+                    Log.d(TAG, "State after update: userCredits=${_state.value.userCredits}")
+                    Log.d("BUNDL_CREDITS", "State after update: userCredits=${_state.value.userCredits}")
+                    
+                    Log.d(TAG, "Credits info retrieved: ${creditsResponse.credits} credits")
+                    Log.d("BUNDL_CREDITS", "API Response - Credits: ${creditsResponse.credits}")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error fetching credits info", e)
+                    Log.e("BUNDL_CREDITS", "API Error: ${e.message}")
+                    _state.update { it.copy(errorMessage = "Failed to fetch credits: ${e.message}") }
                 }
-                
-                // Verify the update happened
-                Log.d(TAG, "CREDITS STATE AFTER UPDATE: ${_state.value.userCredits}")
-                Log.d("BUNDL_CREDITS", "CREDITS STATE AFTER UPDATE: ${_state.value.userCredits}")
-                
-                // Log the current state after update
-                Log.d(TAG, "State after update: userCredits=${_state.value.userCredits}")
-                Log.d("BUNDL_CREDITS", "State after update: userCredits=${_state.value.userCredits}")
-                
-                Log.d(TAG, "Credits info retrieved: ${creditsResponse.credits} credits")
-                Log.d("BUNDL_CREDITS", "API Response - Credits: ${creditsResponse.credits}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching credits info", e)
-                Log.e("BUNDL_CREDITS", "API Error: ${e.message}")
-                _state.update { it.copy(errorMessage = "Failed to fetch credits: ${e.message}") }
-            } finally {
-                if (showLoading) {
-                    _state.update { it.copy(isLoading = false) }
-                }
+            )
+            
+            if (showLoading) {
+                _state.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -319,17 +352,19 @@ class HomeViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = true) }
             }
             
-            try {
-                val stats = authApiService.getUserStats()
-                _state.update { it.copy(userStats = stats) }
-                Log.d(TAG, "User stats retrieved: $stats")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching user stats", e)
-                _state.update { it.copy(errorMessage = "Failed to fetch user stats: ${e.message}") }
-            } finally {
-                if (showLoading) {
-                    _state.update { it.copy(isLoading = false) }
+            getUserStatsUseCase().fold(
+                onSuccess = { stats ->
+                    _state.update { it.copy(userStats = stats) }
+                    Log.d(TAG, "User stats retrieved: $stats")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error fetching user stats", e)
+                    _state.update { it.copy(errorMessage = "Failed to fetch user stats: ${e.message}") }
                 }
+            )
+            
+            if (showLoading) {
+                _state.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -343,9 +378,12 @@ class HomeViewModel @Inject constructor(
             try {
                 // Use initial location instead of current location
                 val location = initialLocation
-                orderRepository.getActiveOrders(
-                    latitude = location.latitude,
-                    longitude = location.longitude
+                
+                getActiveOrdersUseCase(
+                    GetActiveOrdersParams(
+                        latitude = location.latitude,
+                        longitude = location.longitude
+                    )
                 ).fold(
                     onSuccess = { orders ->
                         _state.update { it.copy(activeOrders = orders) }
@@ -374,68 +412,35 @@ class HomeViewModel @Inject constructor(
     }
     
     private fun fitMapToOrders(orders: List<Order>, userLat: Double, userLon: Double) {
-        // If no orders, use a much smaller zoom area
-        if (orders.isEmpty()) {
-            mapProvider.animateCamera(
-                latitude = userLat,
-                longitude = userLon,
-                zoom = 16.0, // More zoomed in for 0.5km radius
-                duration = 1000,
-                paddingBottom = 300f
+        viewModelScope.launch {
+            fitMapToOrdersUseCase(
+                FitMapToOrdersParams(
+                    orders = orders,
+                    userLatitude = userLat,
+                    userLongitude = userLon
+                )
+            ).fold(
+                onSuccess = {
+                    Log.d(TAG, "Map fitted to orders successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error fitting map to orders", e)
+                }
             )
-            return
         }
-
-        // Calculate the bounds that include all orders and user location
-        var minLat = userLat
-        var maxLat = userLat
-        var minLon = userLon
-        var maxLon = userLon
-
-        orders.forEach { order ->
-            minLat = minOf(minLat, order.latitude)
-            maxLat = maxOf(maxLat, order.latitude)
-            minLon = minOf(minLon, order.longitude)
-            maxLon = maxOf(maxLon, order.longitude)
-        }
-
-        // Calculate center point
-        val centerLat = (minLat + maxLat) / 2
-        val centerLon = (minLon + maxLon) / 2
-
-        // Calculate appropriate zoom level based on the bounds
-        val latDiff = maxLat - minLat
-        val lonDiff = maxLon - minLon
-        val maxDiff = maxOf(latDiff, lonDiff)
-        
-        // Adjusted zoom levels for 0.5km radius (approximately doubled from previous values)
-        val zoom = when {
-            maxDiff > 0.05 -> 13.0  // Very spread out
-            maxDiff > 0.025 -> 13.7 // Moderately spread
-            maxDiff > 0.01 -> 14.4 // Somewhat close
-            maxDiff > 0.005 -> 15.0 // Close together
-            else -> 15.5          // Very close together
-        }
-
-        // Add padding to account for the bottom sheet (50% of screen height)
-        mapProvider.animateCamera(
-            latitude = centerLat,
-            longitude = centerLon,
-            zoom = zoom,
-            duration = 1000,
-            paddingBottom = 300f  // Approximate padding for bottom sheet
-        )
     }
     
     fun logout() {
         viewModelScope.launch {
-            try {
-                authRepository.logout()
-                Log.d(TAG, "User logged out successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during logout", e)
-                _state.update { it.copy(errorMessage = "Error during logout: ${e.message}") }
-            }
+            logoutUseCase().fold(
+                onSuccess = {
+                    Log.d(TAG, "User logged out successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error during logout", e)
+                    _state.update { it.copy(errorMessage = "Error during logout: ${e.message}") }
+                }
+            )
         }
     }
     
@@ -447,9 +452,24 @@ class HomeViewModel @Inject constructor(
     
     // Centers the map on user location with a specific zoom level
     fun centerMapWithZoom(zoomLevel: Double) {
-        // Use the stored initial location rather than getting the current one
-        val location = initialLocation
-        mapProvider.zoomToLocation(location.latitude, location.longitude, zoomLevel)
+        viewModelScope.launch {
+            // Use the stored initial location rather than getting the current one
+            val location = initialLocation
+            zoomToLocationUseCase(
+                ZoomToLocationParams(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    zoomLevel = zoomLevel
+                )
+            ).fold(
+                onSuccess = {
+                    Log.d(TAG, "Map centered with zoom successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error centering map with zoom", e)
+                }
+            )
+        }
     }
     
     /**
@@ -459,7 +479,9 @@ class HomeViewModel @Inject constructor(
      * @param visibleMapHeightDp The height of the visible map area in dp
      * @param screenHeightDp The total screen height in dp
      */
+    @Suppress("UNUSED_PARAMETER")
     fun centerMapOnUserLocationInVisibleArea(visibleMapHeightDp: Float, screenHeightDp: Float) {
+        // For now, just center the map normally - could be enhanced later to account for visible area
         val location = initialLocation
         val currentOrders = _state.value.activeOrders
         fitMapToOrders(currentOrders, location.latitude, location.longitude)
@@ -470,40 +492,50 @@ class HomeViewModel @Inject constructor(
         targetZoom: Double? = null,
         duration: Long = 300
     ) {
-        // Use the stored initial location rather than getting the current one
-        val location = initialLocation
-        mapProvider.animateCamera(
-            latitude = location.latitude,
-            longitude = location.longitude,
-            zoom = targetZoom,
-            duration = duration
-        )
+        viewModelScope.launch {
+            // Use the stored initial location rather than getting the current one
+            val location = initialLocation
+            animateCameraUseCase(
+                AnimateCameraParams(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    zoom = targetZoom,
+                    duration = duration
+                )
+            ).fold(
+                onSuccess = {
+                    Log.d(TAG, "Map camera animated successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error animating map camera", e)
+                }
+            )
+        }
     }
     
     fun selectOrderOnMap(order: Order) {
         // Store the selected order ID
         _state.update { it.copy(selectedOrderId = order.id) }
         
-        mapProvider.setSelectedOrder(order.id)
-        
-        // Get current location
-        val location = initialLocation
-        
-        // Calculate midpoint between user and order
-        val centerLat = (location.latitude + order.latitude) / 2
-        val centerLon = (location.longitude + order.longitude) / 2
-        
-        // Use a more zoomed in level for better visibility of the selected order
-        val currentZoom = 16.0  // Increased from 14.5 to zoom in more
-        
-        // Animate to new position
-        mapProvider.animateCamera(
-            latitude = centerLat,
-            longitude = centerLon,
-            zoom = currentZoom,
-            duration = 500,
-            paddingBottom = 300f  // Keep consistent padding
-        )
+        viewModelScope.launch {
+            // Get current location
+            val location = initialLocation
+            
+            selectOrderOnMapUseCase(
+                SelectOrderOnMapParams(
+                    order = order,
+                    userLatitude = location.latitude,
+                    userLongitude = location.longitude
+                )
+            ).fold(
+                onSuccess = {
+                    Log.d(TAG, "Order selected on map successfully")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error selecting order on map", e)
+                }
+            )
+        }
     }
     
     /**
@@ -533,24 +565,27 @@ class HomeViewModel @Inject constructor(
     
     fun pledgeToOrder(orderId: String, amount: Int, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            try {
-                val response = orderApiService.pledgeToOrder(PledgeRequest(orderId = orderId, pledgeAmount = amount))
-                
-                if (response.isSuccessful) {
-                    // Find the order we pledged to
-                    val order = _state.value.activeOrders.find { it.id == orderId }
-                    
-                    // If order exists, pass it to the success callback to be added to MyOrdersViewModel
-                    order?.let { 
-                        // Navigate to MyOrdersScreen and pass the order
-                        onSuccess(Route.MyOrders.route)
+            pledgeToOrderUseCase(
+                PledgeToOrderParams(orderId = orderId, amount = amount)
+            ).fold(
+                onSuccess = { response ->
+                    if (response.isSuccessful) {
+                        // Find the order we pledged to
+                        val order = _state.value.activeOrders.find { it.id == orderId }
+                        
+                        // If order exists, pass it to the success callback to be added to MyOrdersViewModel
+                        order?.let { 
+                            // Navigate to MyOrdersScreen and pass the order
+                            onSuccess(Route.MyOrders.route)
+                        }
+                    } else {
+                        Log.e(TAG, "Failed to pledge to order: ${response.code()}")
                     }
-                } else {
-                    Log.e(TAG, "Failed to pledge to order: ${response.code()}")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "Error pledging to order", e)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error pledging to order", e)
-            }
+            )
         }
     }
     
@@ -561,8 +596,8 @@ class HomeViewModel @Inject constructor(
                 Log.d("BUNDL_DEBUG", "Creating order with: amount=$amountNeeded, platform=$platform, pledge=$initialPledge")
                 Log.d("BUNDL_DEBUG", "Using location: lat=${location.latitude}, lon=${location.longitude}")
                 
-                val response = orderApiService.createOrder(
-                    CreateOrderRequest(
+                createOrderUseCase(
+                    CreateOrderParams(
                         amountNeeded = amountNeeded,
                         platform = platform,
                         latitude = location.latitude,
@@ -570,16 +605,23 @@ class HomeViewModel @Inject constructor(
                         initialPledge = initialPledge,
                         expirySeconds = 600
                     )
+                ).fold(
+                    onSuccess = { order ->
+                        Log.d("BUNDL_DEBUG", "Order created successfully: ${order.id}")
+                        Log.d("BUNDL_DEBUG", "Full order response: $order")
+                        
+                        // Refresh active orders before navigating
+                        fetchActiveOrders()
+                        
+                        Log.d("BUNDL_DEBUG", "Calling onSuccess callback with route and order")
+                        onSuccess(Route.MyOrders.route, order)
+                    },
+                    onFailure = { e ->
+                        Log.e("BUNDL_DEBUG", "Error creating order", e)
+                        showToast("Error creating order: ${e.message}")
+                        _state.update { it.copy(errorMessage = e.message ?: "Error creating order") }
+                    }
                 )
-                
-                Log.d("BUNDL_DEBUG", "Order created successfully: ${response.id}")
-                Log.d("BUNDL_DEBUG", "Full order response: $response")
-                
-                // Refresh active orders before navigating
-                fetchActiveOrders()
-                
-                Log.d("BUNDL_DEBUG", "Calling onSuccess callback with route and order")
-                onSuccess(Route.MyOrders.route, response)
                 
             } catch (e: Exception) {
                 Log.e("BUNDL_DEBUG", "Error creating order", e)

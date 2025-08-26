@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.messaging.FirebaseMessaging
 import com.bundl.app.domain.model.ApiKey
 import com.bundl.app.domain.repository.ApiKeyRepository
-import com.bundl.app.utils.DeviceUtils
+import com.bundl.app.data.utils.DeviceUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

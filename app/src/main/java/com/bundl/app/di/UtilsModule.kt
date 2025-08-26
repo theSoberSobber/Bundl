@@ -1,8 +1,8 @@
 package com.bundl.app.di
 
 import android.content.Context
-import com.bundl.app.utils.DeviceUtils
-import com.bundl.app.utils.LocationManager
+import com.bundl.app.data.utils.DeviceUtils
+import com.bundl.app.data.utils.LocationManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

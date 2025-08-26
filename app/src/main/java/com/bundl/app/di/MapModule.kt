@@ -4,7 +4,7 @@ import android.content.Context
 import com.bundl.app.data.maps.MapboxProvider
 import com.bundl.app.domain.maps.MapProvider
 import com.bundl.app.domain.maps.MapProviderFactory
-import com.bundl.app.utils.LocationManager
+import com.bundl.app.data.utils.LocationManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
