@@ -172,11 +172,11 @@ class BackgroundLocationService : Service() {
                 val result = geohashLocationService.updateLocationSubscriptions(locationData)
                 
                 if (result.isSuccess) {
-                    updateNotification("Location updated: ${formatLocation(locationData)}")
+                    updateNotification("") // The updateNotification function now handles the text internally
                     Log.d(tag, "Geohash subscriptions updated for location: ${locationData.latitude}, ${locationData.longitude}")
                 } else {
                     Log.e(tag, "Failed to update geohash subscriptions", result.exceptionOrNull())
-                    updateNotification("Location tracking active (subscription error)")
+                    updateNotification("") // Still call updateNotification to refresh the display
                 }
             }
         }
@@ -199,8 +199,8 @@ class BackgroundLocationService : Service() {
     }
     
     private fun createNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle("Bundl Location Tracking")
-        .setContentText("Tracking your location for nearby orders")
+        .setContentTitle("Listening for Orders Nearby")
+        .setContentText("Monitoring your area for new orders")
         .setSmallIcon(android.R.drawable.ic_menu_mylocation)
         .setOngoing(true)
         .setSilent(true)
@@ -208,9 +208,16 @@ class BackgroundLocationService : Service() {
         .build()
     
     private fun updateNotification(text: String) {
+        val geohashCount = geohashLocationService.currentGeohashes.value.size
+        val notificationText = if (geohashCount > 0) {
+            "Listening on $geohashCount areas"
+        } else {
+            "Setting up nearby monitoring..."
+        }
+        
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Bundl Location Tracking")
-            .setContentText(text)
+            .setContentTitle("Listening for Orders Nearby")
+            .setContentText(notificationText)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .setSilent(true)

@@ -109,6 +109,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.bundl.app.presentation.orders.MyOrdersViewModel
+import androidx.compose.material3.Switch
+import com.bundl.app.presentation.location.LocationTrackingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,6 +126,10 @@ fun HomeTab(
     val screenHeight = configuration.screenHeightDp.dp
     val density = LocalDensity.current
     val context = LocalContext.current
+    
+    // Get the LocationTrackingViewModel for nearby orders toggle
+    val locationTrackingViewModel: LocationTrackingViewModel = hiltViewModel()
+    val locationState by locationTrackingViewModel.uiState.collectAsState()
     
     // Define sheet height (50% of screen)
     val sheetHeight = screenHeight * 0.5f
@@ -311,11 +317,65 @@ fun HomeTab(
                     mapBoundingBoxY = size.height.toFloat()
                 },
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = Color(0xFF1C1C1C)  // Darker shade for Uber-like look
+            color = Color(0xFF242424)  // Slightly darker grayish color to distinguish banner area
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
+                // Banner row between outer and inner surfaces - Notify nearby orders toggle
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Notify nearby orders",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (locationState.isTrackingEnabled) {
+                                    "Listening on ${locationState.currentGeohashes.size} areas"
+                                } else {
+                                    "~200m radius around your location"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFB0B0B0),
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                        
+                        Switch(
+                            checked = locationState.isTrackingEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled) {
+                                    locationTrackingViewModel.startLocationTracking()
+                                } else {
+                                    locationTrackingViewModel.stopLocationTracking()
+                                }
+                            }
+                        )
+                    }
+                }
+                
+                // Inner Surface (back to original dark color)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    color = Color(0xFF1C1C1C)  // Back to original dark color
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                 // Drag handle
                 Box(
                 modifier = Modifier
@@ -523,6 +583,8 @@ fun HomeTab(
                     }
                 }
             }
+        }
+    }
         }
     }
     
