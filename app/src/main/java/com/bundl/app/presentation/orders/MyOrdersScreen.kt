@@ -25,7 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.bundl.app.domain.model.Order
 import androidx.compose.ui.platform.LocalContext
-import com.bundl.app.presentation.dashboard.RideOption
+import com.bundl.app.presentation.dashboard.components.RideOption
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

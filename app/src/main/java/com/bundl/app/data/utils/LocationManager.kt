@@ -145,6 +145,13 @@ class LocationManager @Inject constructor(
     }
     
     /**
+     * Manually update location (used by background service)
+     */
+    fun updateLocationManually(locationData: LocationData) {
+        _currentLocation.value = locationData
+    }
+    
+    /**
      * Cleanup when no longer needed
      */
     fun cleanup() {
