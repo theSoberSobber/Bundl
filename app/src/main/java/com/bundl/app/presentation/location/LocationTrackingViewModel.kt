@@ -18,8 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LocationTrackingViewModel @Inject constructor(
     private val geohashLocationUseCase: GeohashLocationUseCase,
-    private val locationManager: LocationManager,
-    private val geohashLocationService: GeohashLocationService
+    private val locationManager: LocationManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(LocationTrackingUiState())
@@ -35,14 +34,14 @@ class LocationTrackingViewModel @Inject constructor(
         
         // Observe subscription status
         viewModelScope.launch {
-            geohashLocationService.subscriptionStatus.collect { status ->
+            geohashLocationUseCase.getSubscriptionStatus().collect { status ->
                 updateUiState { copy(subscriptionStatus = status) }
             }
         }
         
         // Observe current geohashes
         viewModelScope.launch {
-            geohashLocationService.currentGeohashes.collect { geohashes ->
+            geohashLocationUseCase.getCurrentGeohashes().collect { geohashes ->
                 updateUiState { copy(currentGeohashes = geohashes) }
             }
         }

@@ -111,6 +111,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.bundl.app.presentation.orders.MyOrdersViewModel
 import androidx.compose.material3.Switch
 import com.bundl.app.presentation.location.LocationTrackingViewModel
+import com.bundl.app.presentation.theme.BundlColors
+import com.bundl.app.presentation.dashboard.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -317,7 +319,7 @@ fun HomeTab(
                     mapBoundingBoxY = size.height.toFloat()
                 },
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = Color(0xFF242424)  // Slightly darker grayish color to distinguish banner area
+            color = BundlColors.SurfaceBanner  // Banner area background
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -347,7 +349,7 @@ fun HomeTab(
                                     "~200m radius around your location"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFB0B0B0),
+                                color = BundlColors.TextSecondary,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -371,7 +373,7 @@ fun HomeTab(
                         .fillMaxWidth()
                         .weight(1f),
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    color = Color(0xFF1C1C1C)  // Back to original dark color
+                    color = BundlColors.SurfaceDark  // Main content area
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize()
@@ -417,7 +419,7 @@ fun HomeTab(
                             .size(32.dp)
                             .background(
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(BundlColors.Radius.Medium.dp)
                             )
                     ) {
                         Icon(
@@ -463,7 +465,7 @@ fun HomeTab(
                 
                 // Fixed bottom bar
                 Surface(
-                    color = Color(0xFF1C1C1C),
+                    color = BundlColors.SurfaceDark,
                     shadowElevation = 8.dp,
                     modifier = Modifier.fillMaxWidth()
     ) {
@@ -504,8 +506,8 @@ fun HomeTab(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(0xFF2C2C2C))
+                                    .clip(RoundedCornerShape(BundlColors.Radius.Large.dp))
+                                    .background(BundlColors.SurfaceLight)
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 // Force refresh of credits when this part of UI is drawn
@@ -546,10 +548,10 @@ fun HomeTab(
                                 },
                                 modifier = Modifier.weight(1f),
                                 enabled = state.selectedOrderId != null,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(BundlColors.Radius.Button.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
-                                    disabledContainerColor = Color(0xFF2C2C2C)
+                                    disabledContainerColor = BundlColors.ButtonDisabled
                                 )
                             ) {
                                 Text(
@@ -566,9 +568,9 @@ fun HomeTab(
                                     android.util.Log.d("BUNDL_ORDERS", "Refreshing orders and credits")
                                 },
                                 modifier = Modifier.width(56.dp),
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(BundlColors.Radius.Button.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2C2C2C)
+                                    containerColor = BundlColors.SurfaceLight
                                 ),
                                 contentPadding = PaddingValues(0.dp)
                             ) {
@@ -637,595 +639,3 @@ fun HomeTab(
         )
     }
 }
-
-@Composable
-fun PaymentBar(
-    onExpand: () -> Unit
-) {
-    Surface(
-        color = Color.DarkGray.copy(alpha = 0.95f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            // Payment method row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .clickable { /* Show payment options */ },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Checkmark
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                // Personal text
-                        Text(
-                    text = "Personal",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-                
-                Spacer(modifier = Modifier.width(4.dp))
-                
-                // Cash text
-                        Text(
-                    text = "Cash",
-                            style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray
-                )
-                
-                Spacer(modifier = Modifier.width(4.dp))
-                
-                // Down arrow
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Payment options",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // Expand arrow - only in collapsed state
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowUp,
-                    contentDescription = "Expand",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { onExpand() }
-                )
-            }
-            
-            // Button (only in expanded states)
-            Button(
-                onClick = { /* Book ride */ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-                contentPadding = PaddingValues(vertical = 12.dp)
-            ) {
-                Text(
-                    text = "Choose Uber Go",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun UserCircles(
-    count: Int,
-    modifier: Modifier = Modifier
-) {
-    val colors = listOf(
-        Color(0xFF4285F4), // Google Blue
-        Color(0xFFDB4437), // Google Red
-        Color(0xFFF4B400), // Google Yellow
-        Color(0xFF0F9D58), // Google Green
-        Color(0xFF7B1FA2)  // Purple
-    )
-    
-    Box(modifier = modifier) {
-        // Show up to 4 circles + a count if there are more
-        val circleSize = 20.dp
-        val overlap = 12.dp // Amount of overlap between circles
-        val maxVisibleCircles = minOf(count, 4)
-        
-        // Draw circles from right to left
-        for (i in 0 until maxVisibleCircles) {
-            Box(
-            modifier = Modifier
-                    .size(circleSize)
-                    .offset(x = -(overlap * i))
-                    .zIndex((maxVisibleCircles - i).toFloat()) // Higher z-index for left circles
-                    .background(colors[i], CircleShape)
-                    .border(1.dp, Color(0xFF2C2C2C), CircleShape)
-            ) {
-                // If this is the last circle and we have more users, show the count
-                if (i == maxVisibleCircles - 1 && count > 4) {
-            Text(
-                        text = "+${count - 3}",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RideOption(
-    order: Order,
-    onClick: () -> Unit,
-    isSelected: Boolean,
-    isFeatured: Boolean
-) {
-    val backgroundColor = Color(0xFF2C2C2C)
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
-        elevation = CardDefaults.cardElevation(2.dp),
-        border = if (isSelected) {
-            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        } else null
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Top row with platform and users count
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Platform name
-            Text(
-                    text = order.platform.capitalize(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                
-                // Users circles
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    UserCircles(
-                        count = order.totalUsers,
-                        modifier = Modifier.height(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                        text = "${order.totalUsers} joined",
-                            style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray
-                    )
-                }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-            // Progress section
-            Column {
-                // Amount progress text
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "₹${order.amountNeeded - order.totalPledge} more needed",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "out of ₹${order.amountNeeded}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray,
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Progress bar
-                LinearProgressIndicator(
-                    progress = (order.totalPledge).toFloat() / order.amountNeeded.toFloat(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = Color(0xFF4D4D4D)
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Pledged amount
-                Text(
-                    text = "₹${order.totalPledge} pledged so far",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.LightGray,
-                    modifier = Modifier.align(Alignment.End)
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TransportOption(
-    rideName: String,
-    price: String,
-    estimatedTime: String,
-    distance: String,
-    isFaster: Boolean,
-    order: Order,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Vehicle image with different icons based on type
-                Box(
-                    modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = when(rideName) {
-                            "Auto" -> Color(0xFFFBC02D) // Yellow for auto
-                            "Moto" -> Color(0xFFFF7043) // Orange for motorcycle
-                            else -> MaterialTheme.colorScheme.surfaceVariant // Default for cars
-                        },
-                        shape = CircleShape
-                    ),
-                    contentAlignment = Alignment.Center
-                ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_location), // Replace with appropriate vehicle icons
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            // Ride details
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = rideName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text(
-                        text = price,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$estimatedTime • $distance away",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-                
-                // Description or faster badge
-                if (isFaster) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(4.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_location),
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                
-                                Spacer(modifier = Modifier.width(4.dp))
-                                
-                            Text(
-                                    text = "Faster",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-                } else {
-                            Text(
-                        text = when(rideName) {
-                            "Auto" -> "Pay directly to driver, cash/UPI only"
-                            "Go Sedan" -> "Affordable sedans"
-                            "Moto" -> "Affordable motorcycle rides"
-                            else -> "Comfortable ride"
-                        },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyOrdersCard() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    color = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .padding(24.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Info",
-                tint = Color.LightGray,
-                modifier = Modifier
-                    .size(48.dp)
-                    .padding(bottom = 16.dp)
-            )
-                        Text(
-                text = "No Active Orders Available",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun PledgeDialog(
-    order: Order,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
-) {
-    var pledgeAmount by remember { mutableStateOf(50) }
-    
-    // Calculate remaining amount after potential pledge
-    val remainingAfterPledge = order.amountNeeded - order.totalPledge - pledgeAmount
-    val wouldCompleteOrder = remainingAfterPledge <= 0
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Pledge to Order",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column {
-                Text(
-                    text = "How much would you like to pledge?",
-            style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-                
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                // Amount input
-                OutlinedTextField(
-                    value = pledgeAmount.toString(),
-                    onValueChange = { 
-                        val amount = it.toIntOrNull() ?: 0
-                        if (amount <= order.amountNeeded) {
-                            pledgeAmount = amount
-                        }
-                    },
-                    label = { Text("Amount (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Show completion status
-                if (wouldCompleteOrder) {
-                            Text(
-                        text = "🎉 This pledge will complete the order!",
-                                style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF4CAF50), // Material Green
-                        modifier = Modifier.fillMaxWidth()
-                            )
-                } else {
-                            Text(
-                        text = "₹$remainingAfterPledge will still be needed",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFE57373), // Material Red
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(pledgeAmount) },
-                enabled = pledgeAmount > 0
-            ) {
-                Text("Confirm Pledge")
-            }
-        },
-        dismissButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2C2C2C)
-                )
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun CreateOrderDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Double, String, Int) -> Unit
-) {
-    var amountNeeded by remember { mutableStateOf("") }
-    var platform by remember { mutableStateOf("") }
-    var initialPledge by remember { mutableStateOf("") }
-    val expirySeconds = 600 // Fixed value
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-        Text(
-                text = "Create New Order",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = amountNeeded,
-                    onValueChange = { amountNeeded = it },
-                    label = { Text("Amount Needed for Offer/Free Delivery (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = platform,
-                    onValueChange = { platform = it },
-                    label = { Text("Platform (e.g., Zomato, Swiggy)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = initialPledge,
-                    onValueChange = { initialPledge = it },
-                    label = { Text("What You're Paying (₹)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Disabled expiry seconds field
-                OutlinedTextField(
-                    value = expirySeconds.toString(),
-                    onValueChange = { },
-                    label = { Text("Expiry Seconds") },
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amount = amountNeeded.toDoubleOrNull() ?: 0.0
-                    val pledge = initialPledge.toIntOrNull() ?: 0
-                    if (amount > 0 && platform.isNotBlank() && pledge > 0) {
-                        onConfirm(amount, platform, pledge)
-                    }
-                },
-                enabled = amountNeeded.toDoubleOrNull() != null && 
-                         platform.isNotBlank() && 
-                         initialPledge.toIntOrNull() != null
-            ) {
-                Text("Create Order")
-            }
-        },
-        dismissButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2C2C2C)
-                )
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
-} 

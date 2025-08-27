@@ -82,6 +82,16 @@ class GeohashLocationUseCase @Inject constructor(
     }
     
     /**
+     * Get current geohashes StateFlow
+     */
+    fun getCurrentGeohashes() = geohashLocationService.currentGeohashes
+    
+    /**
+     * Get subscription status StateFlow
+     */
+    fun getSubscriptionStatus() = geohashLocationService.subscriptionStatus
+    
+    /**
      * Clean up all subscriptions
      */
     suspend fun cleanup(): Result<Unit> {

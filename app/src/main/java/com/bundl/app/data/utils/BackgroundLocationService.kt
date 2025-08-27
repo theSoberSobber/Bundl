@@ -34,9 +34,6 @@ class BackgroundLocationService : Service() {
     private val tag = "BackgroundLocationService"
     
     companion object {
-        const val NOTIFICATION_ID = 12345
-        const val CHANNEL_ID = "location_service_channel"
-        
         // Intent actions
         const val ACTION_START_LOCATION_TRACKING = "START_LOCATION_TRACKING"
         const val ACTION_STOP_LOCATION_TRACKING = "STOP_LOCATION_TRACKING"
@@ -91,92 +88,85 @@ class BackgroundLocationService : Service() {
             return
         }
         
+        Log.d(tag, "Starting location tracking")
+        isTrackingLocation = true
+        
+        startForeground(NotificationConstants.LOCATION_NOTIFICATION_ID, createNotification())
+        
         if (!hasLocationPermission()) {
-            Log.w(tag, "Cannot start location tracking - no permission")
+            Log.e(tag, "Location permissions not granted")
             stopSelf()
             return
         }
         
-        startForeground(NOTIFICATION_ID, createNotification())
-        
-        serviceJob = CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
-            startLocationUpdates()
-            observeLocationChanges()
-        }
-        
-        isTrackingLocation = true
-        Log.i(tag, "Started background location tracking")
+        setupLocationUpdates()
+        startGeohashMonitoring()
     }
     
     private fun stopLocationTracking() {
+        Log.d(tag, "Stopping location tracking")
         isTrackingLocation = false
         
-        locationCallback?.let { callback ->
-            fusedLocationClient?.removeLocationUpdates(callback)
+        locationCallback?.let {
+            fusedLocationClient?.removeLocationUpdates(it)
         }
         
         serviceJob?.cancel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopForeground(true)
         stopSelf()
-        
-        Log.i(tag, "Stopped background location tracking")
     }
     
-    private suspend fun startLocationUpdates() {
-        if (!hasLocationPermission()) return
+    private fun setupLocationUpdates() {
+        val locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            30_000L // 30 seconds
+        )
+            .setMinUpdateIntervalMillis(10_000L) // 10 seconds minimum
+            .setWaitForAccurateLocation(false)
+            .build()
         
-        try {
-            val locationRequest = LocationRequest.Builder(
-                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-                15_000 // 15 seconds for higher precision tracking
-            )
-                .setMinUpdateIntervalMillis(10_000) // 10 seconds minimum
-                .setMaxUpdateDelayMillis(30_000) // 30 seconds maximum delay  
-                .build()
-            
-            locationCallback = object : LocationCallback() {
-                override fun onLocationResult(result: LocationResult) {
-                    result.lastLocation?.let { location ->
-                        val locationData = LocationManager.LocationData(
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                            isFromUser = true
-                        )
-                        
-                        // Update location manager
-                        locationManager.updateLocationManually(locationData)
-                        
-                        Log.d(tag, "Background location update: ${location.latitude}, ${location.longitude}")
-                    }
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                super.onLocationResult(locationResult)
+                val location = locationResult.lastLocation ?: return
+                
+                Log.d(tag, "Location update: ${location.latitude}, ${location.longitude}")
+                
+                // Update location in repository with LocationData
+                val locationData = LocationManager.LocationData(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    isFromUser = true
+                )
+                locationManager.updateLocationManually(locationData)
+                
+                // Update geohash subscriptions
+                CoroutineScope(Dispatchers.IO).launch {
+                    geohashLocationService.updateLocationSubscriptions(locationData)
                 }
             }
-            
-            withContext(Dispatchers.Main) {
-                fusedLocationClient?.requestLocationUpdates(
-                    locationRequest,
-                    locationCallback!!,
-                    Looper.getMainLooper()
-                )
-            }
-            
-            Log.d(tag, "Location updates started")
-        } catch (e: SecurityException) {
-            Log.e(tag, "Security exception when requesting location updates", e)
+        }
+        
+        if (hasLocationPermission()) {
+            fusedLocationClient?.requestLocationUpdates(
+                locationRequest,
+                locationCallback!!,
+                Looper.getMainLooper()
+            )
         }
     }
     
-    private suspend fun observeLocationChanges() {
-        locationManager.currentLocation.collect { locationData ->
-            if (locationData.isFromUser && isTrackingLocation) {
-                // Update geohash subscriptions based on new location
-                val result = geohashLocationService.updateLocationSubscriptions(locationData)
-                
-                if (result.isSuccess) {
-                    updateNotification("") // The updateNotification function now handles the text internally
-                    Log.d(tag, "Geohash subscriptions updated for location: ${locationData.latitude}, ${locationData.longitude}")
-                } else {
-                    Log.e(tag, "Failed to update geohash subscriptions", result.exceptionOrNull())
-                    updateNotification("") // Still call updateNotification to refresh the display
+    private fun startGeohashMonitoring() {
+        serviceJob = CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            try {
+                geohashLocationService.currentGeohashes.collect { geohashes ->
+                    Log.d(tag, "Geohash subscription updated: ${geohashes.size} areas")
+                    updateNotification()
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error monitoring geohashes", e)
+                if (isTrackingLocation) {
+                    updateNotification()
                 }
             }
         }
@@ -185,11 +175,11 @@ class BackgroundLocationService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Location Tracking",
+                NotificationConstants.LOCATION_CHANNEL_ID,
+                NotificationConstants.LOCATION_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Tracks your location to show nearby orders"
+                description = NotificationConstants.LOCATION_CHANNEL_DESCRIPTION
                 setShowBadge(false)
             }
             
@@ -198,53 +188,41 @@ class BackgroundLocationService : Service() {
         }
     }
     
-    private fun createNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle("Listening for Orders Nearby")
-        .setContentText("Monitoring your area for new orders")
-        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+    private fun createNotification() = NotificationCompat.Builder(this, NotificationConstants.LOCATION_CHANNEL_ID)
+        .setContentTitle(NotificationConstants.NOTIFICATION_TITLE)
+        .setContentText(NotificationConstants.NOTIFICATION_TEXT_DEFAULT)
+        .setSmallIcon(NotificationConstants.NOTIFICATION_ICON)
         .setOngoing(true)
         .setSilent(true)
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         .build()
     
-    private fun updateNotification(text: String) {
+    private fun updateNotification() {
         val geohashCount = geohashLocationService.currentGeohashes.value.size
-        val notificationText = if (geohashCount > 0) {
-            "Listening on $geohashCount areas"
-        } else {
-            "Setting up nearby monitoring..."
-        }
+        val notificationText = NotificationConstants.getNotificationText(geohashCount)
         
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Listening for Orders Nearby")
+        val notification = NotificationCompat.Builder(this, NotificationConstants.LOCATION_CHANNEL_ID)
+            .setContentTitle(NotificationConstants.NOTIFICATION_TITLE)
             .setContentText(notificationText)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setSmallIcon(NotificationConstants.NOTIFICATION_ICON)
             .setOngoing(true)
             .setSilent(true)
             .build()
         
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        notificationManager.notify(NotificationConstants.LOCATION_NOTIFICATION_ID, notification)
     }
     
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun formatLocation(location: LocationManager.LocationData): String {
-        return "%.4f, %.4f".format(location.latitude, location.longitude)
+        ) == PackageManager.PERMISSION_GRANTED
     }
     
     override fun onDestroy() {
         super.onDestroy()
-        stopLocationTracking()
         Log.d(tag, "BackgroundLocationService destroyed")
+        stopLocationTracking()
     }
 }
