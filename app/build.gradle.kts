@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-    namespace = "com.bundl.app"
+    namespace = "com.pavit.bundl"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.bundl.app"
+        applicationId = "com.pavit.bundl"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
