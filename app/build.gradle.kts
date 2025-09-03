@@ -22,6 +22,22 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Load RevenueCat API key from local.properties
+        val localPropertiesFile = rootProject.file("local.properties")
+        val localProperties = Properties()
+        if (localPropertiesFile.exists()) {
+            localProperties.load(FileInputStream(localPropertiesFile))
+        }
+        
+        val revenueCatApiKey = localProperties.getProperty("REVENUECAT_API_KEY") ?: "your_revenuecat_api_key_here"
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatApiKey\"")
+        
+        val mapboxAccessToken = localProperties.getProperty("MAPBOX_ACCESS_TOKEN") ?: "your_mapbox_access_token_here"
+        buildConfigField("String", "MAPBOX_ACCESS_TOKEN", "\"$mapboxAccessToken\"")
+        
+        // Create string resource for Mapbox (required by SDK)
+        resValue("string", "mapbox_access_token", mapboxAccessToken)
     }
 
     signingConfigs {
@@ -68,6 +84,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -139,8 +156,11 @@ dependencies {
     implementation(libs.mapbox)
     implementation(libs.mapbox.compose)
 
-    // Cashfree Payment Gateway SDK
-    implementation(libs.cashfree)
+    // RevenueCat SDK
+    implementation(libs.revenuecat)
+    
+    // Google Play Billing (for RevenueCat)
+    implementation(libs.billing.ktx)
 
     // Testing
     testImplementation(libs.junit)

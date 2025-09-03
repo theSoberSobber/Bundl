@@ -69,8 +69,11 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 mapbox = { module = "com.mapbox.maps:android", version = "11.12.0" }
 mapbox-compose = { module = "com.mapbox.extension:maps-compose", version = "11.12.0" }
 
-# Cashfree
-cashfree = { module = "com.cashfree.pg:api", version = "2.2.0" }
+# RevenueCat
+revenuecat = { module = "com.revenuecat.purchases:purchases", version = "9.1.0" }
+
+# Google Play Billing (for RevenueCat)
+billing-ktx = { module = "com.android.billingclient:billing-ktx", version = "7.0.0" }
 
 # Test
 junit = { module = "junit:junit", version = "4.13.2" }

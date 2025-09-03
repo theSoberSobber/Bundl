@@ -15,7 +15,6 @@ import com.pavit.bundl.domain.usecase.credits.StartPaymentUseCase
 import com.pavit.bundl.domain.usecase.credits.StartPaymentParams
 import com.pavit.bundl.domain.usecase.credits.VerifyCreditOrderUseCase
 import com.pavit.bundl.domain.usecase.credits.VerifyCreditOrderParams
-import com.cashfree.pg.core.api.utils.CFErrorResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
