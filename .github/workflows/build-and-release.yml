@@ -1,4 +1,4 @@
-name: Build and Release APK
+name: Build and Release APK (with Environment Management)
 
 on:
   push:
@@ -14,6 +14,35 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Clone envs repository and setup environment files
+        env:
+          PAT: ${{ secrets.PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PAT:-}" ]; then
+            echo "ERROR: Set repository secret PAT for accessing envs repo." >&2
+            exit 1
+          fi
+          
+          # Clone envs repo using PAT
+          git clone https://${PAT}@github.com/theSoberSobber/envs.git envs-repo
+          echo "Successfully cloned envs repository"
+          
+          # Install PyYAML for the env vars script
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pyyaml
+          
+          # Run the centralized env vars setup script (even though Android build doesn't need env vars currently)
+          chmod +x envs-repo/init_env_vars.sh
+          envs-repo/init_env_vars.sh .github/CD.yml
+          
+          # Copy Android-specific files using the bundl_app copy script
+          # This copies local.properties (with API keys) from the secure envs repo
+          chmod +x envs-repo/bundl_app/copy.sh
+          envs-repo/bundl_app/copy.sh .
+          
+          echo "✅ Environment setup complete"
       
       - name: Set up JDK
         uses: actions/setup-java@v4

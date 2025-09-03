@@ -5,3 +5,6 @@ logs/
 *.iml
 .idea/
 
+# Local properties (contains API keys)
+local.properties
+
