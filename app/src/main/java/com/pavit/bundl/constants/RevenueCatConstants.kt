@@ -7,7 +7,7 @@ object RevenueCatConstants {
     const val API_KEY = BuildConfig.REVENUECAT_API_KEY
     
     // Product IDs - these should match your RevenueCat configuration
-    const val PRODUCT_5_CREDITS = "credits_5"
-    const val PRODUCT_10_CREDITS = "credits_10"  
-    const val PRODUCT_20_CREDITS = "credits_20"
+    const val PRODUCT_5_CREDITS = "bundle_5_credits"
+    const val PRODUCT_10_CREDITS = "bundle_10_credits"  
+    const val PRODUCT_20_CREDITS = "bundle_20_credits"
 }
