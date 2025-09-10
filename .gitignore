@@ -5,6 +5,5 @@ logs/
 *.iml
 .idea/
 
-# Local properties (contains API keys)
-local.properties
-
+# Local and Kyestore properties (contains API keys and Keystore password)
+*.properties

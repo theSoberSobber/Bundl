@@ -37,8 +37,11 @@ jobs:
           envs-repo/bundl_app/copy.sh .
           echo "✅ Environment setup complete"
 
-          echo "Files at root:"
+          echo "✅ Files at root:"
           ls -lah
+
+          echo "✅ Removing envs-repo:"
+          rm -rf envs_repo
       
       - name: Set up JDK
         uses: actions/setup-java@v4
