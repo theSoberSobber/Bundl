@@ -6,8 +6,8 @@
 
 # List of environment variables this app needs from the envs repo's env_vars/ directory
 # These will be read from envs repo and made available to the workflow
-required_env_vars: []  # Android build doesn't need the same env vars as backend deployment
-
+required_env_vars:
+  - APK_MANAGER_SECRET_KEY
 # Environment folder in the envs repo that contains files for this project
 env_subpath: bundl_app  # Points to the bundl_app folder we just created
 
