@@ -182,7 +182,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun providePaymentService(creditsService: CreditsService): PaymentService {
-        return PaymentService(creditsService)
+    fun providePaymentService(revenueCatManager: com.pavit.bundl.domain.payment.RevenueCatManager): PaymentService {
+        return PaymentService(revenueCatManager)
     }
 } 

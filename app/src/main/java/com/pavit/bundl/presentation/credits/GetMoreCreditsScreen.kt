@@ -56,8 +56,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pavit.bundl.domain.model.CreditPackage
 import com.pavit.bundl.domain.payment.PaymentService
-import com.cashfree.pg.core.api.callback.CFCheckoutResponseCallback
-import com.cashfree.pg.core.api.utils.CFErrorResponse
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.launch
@@ -73,13 +71,17 @@ fun PaymentCallbackHandler(
     
     DisposableEffect(Unit) {
         activity?.let {
-            val callback = object : CFCheckoutResponseCallback {
-                override fun onPaymentVerify(orderId: String) {
+            val callback = object : PaymentService.PaymentCallback {
+                override fun onPaymentSuccess(orderId: String, credits: Int) {
                     viewModel.onPaymentCompleted(true, null)
                 }
                 
-                override fun onPaymentFailure(cfErrorResponse: CFErrorResponse, orderId: String) {
-                    viewModel.onPaymentCompleted(false, cfErrorResponse.message)
+                override fun onPaymentFailure(error: String) {
+                    viewModel.onPaymentCompleted(false, error)
+                }
+                
+                override fun onPaymentCancelled() {
+                    viewModel.onPaymentCompleted(false, "Payment cancelled")
                 }
             }
             

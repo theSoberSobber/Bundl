@@ -1,12 +1,11 @@
-name: Build and Release APK
+name: Build and Release Bundl (APK + AAB with Environment Management)
 
 on:
   push:
-    # Run on any branch push
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
 
 permissions:
-  contents: write # Required for creating releases
+  contents: write
 
 jobs:
   build:
@@ -14,6 +13,35 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Clone envs repository and setup environment files
+        env:
+          PAT: ${{ secrets.PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PAT:-}" ]; then
+            echo "ERROR: Set repository secret PAT for accessing envs repo." >&2
+            exit 1
+          fi
+          
+          git clone https://${PAT}@github.com/theSoberSobber/envs.git envs-repo
+          echo "✅ Successfully cloned envs repository"
+          
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pyyaml
+          
+          chmod +x envs-repo/init_env_vars.sh
+          envs-repo/init_env_vars.sh .github/CD.yml
+          
+          chmod +x envs-repo/bundl_app/copy.sh
+          envs-repo/bundl_app/copy.sh .
+          echo "✅ Environment setup complete"
+          
+          echo "✅ Files at root:"
+          ls -lah
+          
+          echo "✅ Removing envs-repo:"
+          rm -rf envs_repo
       
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -25,11 +53,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
       
-      - name: Create debug keystore
-        run: |
-          mkdir -p ~/.android
-          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
       
@@ -37,20 +60,40 @@ jobs:
         id: version
         run: echo "VERSION_NAME=$(date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
       
+      # --- Build APK ---
       - name: Build Release APK
         run: ./gradlew assembleRelease
       
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
+          mv app/build/outputs/apk/release/app-release.apk \
+             app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
       
+      # --- Build AAB ---
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease
+      
+      - name: Rename AAB
+        run: |
+          mv app/build/outputs/bundle/release/app-release.aab \
+             app/build/outputs/bundle/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.aab
+      
+      # --- Upload as artifacts ---
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Bundl-${{ steps.version.outputs.VERSION_NAME }}
+          name: Bundl-APK-${{ steps.version.outputs.VERSION_NAME }}
           path: app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
           retention-days: 7
       
+      - name: Upload AAB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bundl-AAB-${{ steps.version.outputs.VERSION_NAME }}
+          path: app/build/outputs/bundle/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.aab
+          retention-days: 7
+      
+      # --- GitHub Release ---
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -64,12 +107,14 @@ jobs:
             - Branch: ${{ github.ref_name }}
           files: |
             app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk
+            app/build/outputs/bundle/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.aab
           generate_release_notes: true
           
+      # --- Custom APK Manager Upload (APK only) ---
       - name: Upload APK to APK Manager
         run: |
           echo "Uploading APK to APK Manager..."
           curl -v -X POST \
-            -H "X-Secret-Key: orvio-secret-key-change-in-production" \
+            -H "X-Secret-Key: ${APK_MANAGER_SECRET_KEY}" \
             -F "file=@app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk" \
-            https://apkmanager.1110777.xyz/bundl/upload 
+            https://apkmanager.1110777.xyz/bundl/upload
