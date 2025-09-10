@@ -36,6 +36,9 @@ jobs:
           chmod +x envs-repo/bundl_app/copy.sh
           envs-repo/bundl_app/copy.sh .
           echo "✅ Environment setup complete"
+
+          echo "Files at root:"
+          ls -lah
       
       - name: Set up JDK
         uses: actions/setup-java@v4
