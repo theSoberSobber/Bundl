@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Required for creating releases
+  contents: write
 
 jobs:
   build:
@@ -36,10 +36,10 @@ jobs:
           chmod +x envs-repo/bundl_app/copy.sh
           envs-repo/bundl_app/copy.sh .
           echo "✅ Environment setup complete"
-
+          
           echo "✅ Files at root:"
           ls -lah
-
+          
           echo "✅ Removing envs-repo:"
           rm -rf envs_repo
       
@@ -53,14 +53,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
       
-      - name: Create debug keystore
-        run: |
-          mkdir -p ~/.android
-          keytool -genkey -v -keystore ~/.android/debug.keystore \
-            -storepass android -alias androiddebugkey -keypass android \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
-          
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
       
@@ -123,6 +115,6 @@ jobs:
         run: |
           echo "Uploading APK to APK Manager..."
           curl -v -X POST \
-            -H "X-Secret-Key: orvio-secret-key-change-in-production" \
+            -H "X-Secret-Key: ${APK_MANAGER_SECRET_KEY}" \
             -F "file=@app/build/outputs/apk/release/Bundl-${{ steps.version.outputs.VERSION_NAME }}.apk" \
             https://apkmanager.1110777.xyz/bundl/upload
