@@ -27,6 +27,7 @@ import com.pavit.bundl.presentation.credits.GetMoreCreditsScreen
 import com.pavit.bundl.presentation.dummy.DummyScreen
 import com.pavit.bundl.presentation.orders.MyOrdersScreen
 import com.pavit.bundl.presentation.onboarding.OnboardingScreen
+import com.pavit.bundl.presentation.chat.ChatScreen
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -170,6 +171,19 @@ fun Navigation(
 
         composable(Route.MyOrders.route) {
             MyOrdersScreen(navController = navController)
+        }
+
+        composable(
+            route = Route.Chat.route,
+            arguments = listOf(
+                navArgument("orderId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            ChatScreen(
+                orderId = orderId,
+                navController = navController
+            )
         }
     }
 } 

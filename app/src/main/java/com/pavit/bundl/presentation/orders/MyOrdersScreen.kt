@@ -118,6 +118,10 @@ fun MyOrdersScreen(
                         RideOption(
                             order = order,
                             onClick = {},
+                            onChatClick = { orderId ->
+                                // Navigate to chat screen using Route
+                                navController.navigate("chat/$orderId")
+                            },
                             isSelected = false,
                             isFeatured = false
                         )

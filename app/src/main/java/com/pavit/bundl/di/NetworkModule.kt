@@ -13,6 +13,7 @@ import com.pavit.bundl.utils.network.TimingInterceptor
 import com.pavit.bundl.domain.payment.PaymentService
 import com.pavit.bundl.data.remote.dto.OrderStatusResponse
 import com.pavit.bundl.presentation.orders.OrderStatusResponseDeserializer
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
@@ -148,12 +149,16 @@ object NetworkModule {
     
     @Provides
     @Singleton
-    @RegularRetrofit
-    fun provideRegularRetrofit(@RegularOkHttpClient okHttpClient: OkHttpClient): Retrofit {
-        val gson = GsonBuilder()
+    fun provideGson(): Gson {
+        return GsonBuilder()
             .registerTypeAdapter(OrderStatusResponse::class.java, OrderStatusResponseDeserializer())
             .create()
-        
+    }
+    
+    @Provides
+    @Singleton
+    @RegularRetrofit
+    fun provideRegularRetrofit(@RegularOkHttpClient okHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)

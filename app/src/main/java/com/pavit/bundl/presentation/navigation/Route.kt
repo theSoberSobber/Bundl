@@ -15,4 +15,9 @@ sealed class Route(val route: String) {
     object GetMoreCredits : Route("get_more_credits")
     object DummyScreen : Route("dummy_screen")
     object MyOrders : Route("my_orders")
+    object Chat : Route("chat/{orderId}") {
+        fun createRoute(orderId: String): String {
+            return "chat/$orderId"
+        }
+    }
 } 
