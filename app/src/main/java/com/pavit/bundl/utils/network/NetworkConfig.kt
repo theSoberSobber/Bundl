@@ -6,4 +6,8 @@ object NetworkConfig {
     
     const val BASE_URL = "https://$BASE_HOSTNAME"
     const val BASE_WS_URL = "wss://$BASE_HOSTNAME/chat"
+    
+    // For local development, uncomment these:
+    // const val BASE_URL = "http://$BASE_HOSTNAME"
+    // const val BASE_WS_URL = "ws://$BASE_HOSTNAME/chat"
 }
