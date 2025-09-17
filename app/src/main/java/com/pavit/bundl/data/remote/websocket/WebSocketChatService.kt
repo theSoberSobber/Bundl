@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.pavit.bundl.data.local.TokenManager
 import com.pavit.bundl.data.remote.dto.*
 import com.pavit.bundl.domain.model.ConnectionState
+import com.pavit.bundl.utils.network.NetworkConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,8 +26,6 @@ class WebSocketChatService @Inject constructor(
 ) {
     companion object {
         private const val TAG = "WebSocketChatService"
-        private const val BASE_WS_URL = "wss://backend-bundl.1110777.xyz/chat"
-        // private const val BASE_WS_URL = "ws://192.168.53.152:3002/chat" // Local dev
         private const val RECONNECT_DELAY_MS = 5000L
         private const val MAX_RECONNECT_ATTEMPTS = 5
     }
@@ -106,7 +105,7 @@ class WebSocketChatService @Inject constructor(
                     }
 
                     val request = Request.Builder()
-                        .url(BASE_WS_URL)
+                        .url(NetworkConfig.BASE_WS_URL)
                         .addHeader("Authorization", "Bearer $token")
                         .addHeader("User-Id", userId)
                         .build()
