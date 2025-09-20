@@ -1,5 +1,6 @@
 package com.pavit.bundl.presentation.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pavit.bundl.domain.model.ChatMessage
@@ -7,17 +8,23 @@ import com.pavit.bundl.domain.model.ChatRoom
 import com.pavit.bundl.domain.model.ConnectionState
 import com.pavit.bundl.domain.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val chatRoom: ChatRoom? = null,
-    val connectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val messageText: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val currentUserUsername: String? = null,
+    val shouldExit: Boolean = false,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -34,20 +41,35 @@ class ChatViewModel @Inject constructor(
         currentOrderId = orderId
         
         viewModelScope.launch {
-            // Connect to WebSocket
+            _uiState.update { it.copy(isLoading = true) }
+            
+            // First, ensure we're connected to the WebSocket
+            Log.d("ChatViewModel", "🔗 Connecting to WebSocket...")
             chatRepository.connect(userId)
             
-            // Join the chat room
+            // Wait a bit for connection to establish
+            kotlinx.coroutines.delay(2000)
+            
+            val connectionState = chatRepository.getConnectionState().first()
+            
+            if (connectionState != ConnectionState.CONNECTED) {
+                Log.d("ChatViewModel", "❌ WebSocket connection failed: $connectionState")
+                _uiState.update { it.copy(shouldExit = true, isLoading = false) }
+                return@launch
+            }
+            
+            Log.d("ChatViewModel", "✅ WebSocket connected, joining room")
+            
             chatRepository.joinChatRoom(orderId, userId)
             
-            // Collect connection state
-            chatRepository.getConnectionState()
-                .collect { connectionState ->
-                    _uiState.update { it.copy(connectionState = connectionState) }
-                }
+            chatRepository.getUserUsername()
+                .filterNotNull()
+                .first()
+            
+            Log.d("ChatViewModel", "✅ Join successful, proceeding to chat")
+            _uiState.update { it.copy(isLoading = false) }
         }
         
-        // Collect messages for this order
         viewModelScope.launch {
             chatRepository.getMessagesForOrder(orderId)
                 .collect { messages ->
@@ -55,7 +77,13 @@ class ChatViewModel @Inject constructor(
                 }
         }
         
-        // Collect chat room info
+        viewModelScope.launch {
+            chatRepository.getUserUsername()
+                .collect { username ->
+                    _uiState.update { it.copy(currentUserUsername = username) }
+                }
+        }
+        
         viewModelScope.launch {
             chatRepository.getChatRoomByOrderId(orderId)
                 .collect { chatRoom ->
@@ -74,31 +102,38 @@ class ChatViewModel @Inject constructor(
         
         if (messageText.isEmpty()) return
         
+        // Clear any previous error messages
+        _uiState.update { it.copy(errorMessage = null) }
+        
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            // Check connection state before sending
+            val connectionState = chatRepository.getConnectionState().first()
+            
+            if (connectionState != ConnectionState.CONNECTED) {
+                _uiState.update { 
+                    it.copy(errorMessage = "Not connected to chat. Please check your connection and try again.") 
+                }
+                return@launch
+            }
             
             val result = chatRepository.sendMessage(orderId, messageText)
             
             result.fold(
                 onSuccess = {
-                    _uiState.update { 
-                        it.copy(
-                            messageText = "",
-                            isLoading = false,
-                            error = null
-                        )
-                    }
+                    _uiState.update { it.copy(messageText = "") }
                 },
                 onFailure = { error ->
                     _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = "Failed to send message: ${error.message}"
-                        )
+                        it.copy(errorMessage = "Failed to send message: ${error.message}") 
                     }
+                    Log.e("ChatViewModel", "Failed to send message: ${error.message}")
                 }
             )
         }
+    }
+
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun markMessagesAsRead() {
@@ -109,17 +144,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
-    }
-
     override fun onCleared() {
         super.onCleared()
         
-        // Leave chat room when ViewModel is cleared
         val orderId = currentOrderId ?: return
         viewModelScope.launch {
-            chatRepository.leaveChatRoom(orderId, "current_user_id") // TODO: Get actual user ID
+            chatRepository.leaveChatRoom(orderId, "current_user_id")
         }
     }
 }

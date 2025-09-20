@@ -40,11 +40,20 @@ class WebSocketChatService @Inject constructor(
     private val _incomingMessages = MutableStateFlow<IncomingChatMessageDto?>(null)
     val incomingMessages: StateFlow<IncomingChatMessageDto?> = _incomingMessages.asStateFlow()
     
+    private val _messageSentConfirmations = MutableStateFlow<String?>(null)
+    val messageSentConfirmations: StateFlow<String?> = _messageSentConfirmations.asStateFlow()
+    
     private val _orderUpdates = MutableStateFlow<OrderUpdateDto?>(null)
     val orderUpdates: StateFlow<OrderUpdateDto?> = _orderUpdates.asStateFlow()
     
     private val _participantUpdates = MutableStateFlow<ParticipantUpdateDto?>(null)
     val participantUpdates: StateFlow<ParticipantUpdateDto?> = _participantUpdates.asStateFlow()
+    
+    private val _connectionErrors = MutableStateFlow<String?>(null)
+    val connectionErrors: StateFlow<String?> = _connectionErrors.asStateFlow()
+    
+    private val _userUsername = MutableStateFlow<String?>(null)
+    val userUsername: StateFlow<String?> = _userUsername.asStateFlow()
 
     private var webSocket: WebSocket? = null
     private var currentUserId: String? = null
@@ -59,6 +68,7 @@ class WebSocketChatService @Inject constructor(
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket connected")
             _connectionState.value = ConnectionState.CONNECTED
+            _connectionErrors.value = null // Clear any previous errors
             reconnectAttempts = 0
             reconnectJob?.cancel()
         }
@@ -134,19 +144,18 @@ class WebSocketChatService @Inject constructor(
             return
         }
 
-        val messageDto = OutgoingChatMessageDto(
-            orderId = orderId,
-            content = content,
-            messageId = messageId,
-            timestamp = System.currentTimeMillis()
+        // Send in NestJS @SubscribeMessage format
+        val messageData = mapOf(
+            "orderId" to orderId,
+            "message" to content
+        )
+        
+        val nestJSMessage = mapOf(
+            "event" to "send_message",
+            "data" to messageData
         )
 
-        val webSocketMessage = WebSocketMessage(
-            type = OutgoingMessageType.NEW_MESSAGE.name,
-            payload = gson.toJson(messageDto)
-        )
-
-        val success = socket.send(gson.toJson(webSocketMessage))
+        val success = socket.send(gson.toJson(nestJSMessage))
         Log.d(TAG, "Message send result: $success")
     }
 
@@ -157,13 +166,14 @@ class WebSocketChatService @Inject constructor(
             return
         }
 
-        val joinDto = JoinRoomDto(orderId = orderId, userId = userId)
-        val webSocketMessage = WebSocketMessage(
-            type = OutgoingMessageType.JOIN_ROOM.name,
-            payload = gson.toJson(joinDto)
+        // Send in NestJS @SubscribeMessage format
+        val joinData = mapOf("orderId" to orderId)
+        val nestJSMessage = mapOf(
+            "event" to "join_order",
+            "data" to joinData
         )
 
-        socket.send(gson.toJson(webSocketMessage))
+        socket.send(gson.toJson(nestJSMessage))
         Log.d(TAG, "Joined room: $orderId")
     }
 
@@ -174,36 +184,70 @@ class WebSocketChatService @Inject constructor(
             return
         }
 
-        val leaveDto = LeaveRoomDto(orderId = orderId, userId = userId)
-        val webSocketMessage = WebSocketMessage(
-            type = OutgoingMessageType.LEAVE_ROOM.name,
-            payload = gson.toJson(leaveDto)
+        // Send in NestJS @SubscribeMessage format
+        val leaveData = mapOf("orderId" to orderId)
+        val nestJSMessage = mapOf(
+            "event" to "leave_order",
+            "data" to leaveData
         )
 
-        socket.send(gson.toJson(webSocketMessage))
+        socket.send(gson.toJson(nestJSMessage))
         Log.d(TAG, "Left room: $orderId")
     }
 
     private fun handleIncomingMessage(text: String) {
         try {
-            val webSocketMessage = gson.fromJson(text, WebSocketMessage::class.java)
+            Log.d(TAG, "🔍 Processing WebSocket message: $text")
             
-            when (webSocketMessage.type) {
-                IncomingMessageType.NEW_MESSAGE.name -> {
-                    val messageDto = gson.fromJson(webSocketMessage.payload, IncomingChatMessageDto::class.java)
-                    _incomingMessages.value = messageDto
+            // Backend sends direct JSON objects, not wrapped in WebSocketMessage
+            val messageJson = gson.fromJson(text, Map::class.java) as Map<String, Any>
+            val messageType = messageJson["type"] as? String
+            
+            Log.d(TAG, "📨 Message type: $messageType")
+            
+            when (messageType) {
+                "new_message" -> {
+                    // Convert backend message format to our DTO
+                    val incomingMessage = IncomingChatMessageDto(
+                        id = messageJson["messageId"] as? String ?: "",
+                        orderId = messageJson["orderId"] as? String ?: "",
+                        senderId = "other_user", // Backend doesn't send sender ID in this format
+                        senderName = messageJson["username"] as? String, // Backend sends 'username'
+                        content = messageJson["message"] as? String ?: "",
+                        timestamp = (messageJson["timestamp"] as? Double)?.toLong() ?: System.currentTimeMillis(),
+                        messageType = "text"
+                    )
+                    _incomingMessages.value = incomingMessage
                 }
-                IncomingMessageType.ORDER_UPDATE.name -> {
-                    val orderUpdate = gson.fromJson(webSocketMessage.payload, OrderUpdateDto::class.java)
-                    _orderUpdates.value = orderUpdate
+                "message_sent" -> {
+                    // Message confirmation from backend
+                    val messageId = messageJson["messageId"] as? String
+                    if (messageId != null) {
+                        _messageSentConfirmations.value = messageId
+                        Log.d(TAG, "Message sent confirmation: $messageId")
+                    }
                 }
-                IncomingMessageType.PARTICIPANT_JOINED.name,
-                IncomingMessageType.PARTICIPANT_LEFT.name -> {
-                    val participantUpdate = gson.fromJson(webSocketMessage.payload, ParticipantUpdateDto::class.java)
-                    _participantUpdates.value = participantUpdate
+                "error" -> {
+                    val errorMessage = messageJson["message"] as? String ?: "Unknown error"
+                    Log.e(TAG, "🚨 WebSocket error received: $errorMessage")
+                    Log.e(TAG, "🚨 Full error message: $text")
+                    // Emit error to be handled by UI
+                    _connectionErrors.value = errorMessage
+                }
+                "join_success" -> {
+                    Log.d(TAG, "✅ Join success received: $text")
+                    // Handle successful join with username
+                    val username = messageJson["username"] as? String
+                    if (username != null) {
+                        _userUsername.value = username
+                        Log.d(TAG, "🎭 Received username: $username")
+                    }
+                    // Clear any connection errors since join was successful
+                    _connectionErrors.value = null
+                    Log.d(TAG, "🧹 Join successful - cleared connection errors")
                 }
                 else -> {
-                    Log.w(TAG, "Unknown message type: ${webSocketMessage.type}")
+                    Log.w(TAG, "Unknown message type: $messageType")
                 }
             }
         } catch (e: Exception) {

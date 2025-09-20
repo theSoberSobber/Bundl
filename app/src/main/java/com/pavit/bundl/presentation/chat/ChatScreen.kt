@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,11 +35,30 @@ fun ChatScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Initialize chat when screen loads
     LaunchedEffect(orderId) {
         viewModel.initializeChat(orderId, "current_user_id") // TODO: Get actual user ID
         viewModel.markMessagesAsRead()
+    }
+
+    // Handle exit if not authenticated
+    LaunchedEffect(uiState.shouldExit) {
+        if (uiState.shouldExit) {
+            navController.popBackStack()
+        }
+    }
+
+    // Show error messages
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { errorMessage ->
+            snackbarHostState.showSnackbar(
+                message = errorMessage,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearErrorMessage()
+        }
     }
 
     // Auto-scroll to bottom when new messages arrive
@@ -47,29 +67,23 @@ fun ChatScreen(
             listState.animateScrollToItem(uiState.messages.size - 1)
         }
     }
+    
+    // Show loading overlay
+    if (uiState.isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { 
-                    Column {
-                        Text("Order Chat")
-                        Text(
-                            text = when (uiState.connectionState) {
-                                ConnectionState.CONNECTED -> "Connected • ${uiState.chatRoom?.participants?.size ?: 0} participants"
-                                ConnectionState.CONNECTING -> "Connecting..."
-                                ConnectionState.DISCONNECTED -> "Disconnected"
-                                ConnectionState.ERROR_NETWORK -> "Network Error"
-                                ConnectionState.ERROR_AUTH -> "Authentication Error"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = when (uiState.connectionState) {
-                                ConnectionState.CONNECTED -> Color.Green
-                                ConnectionState.CONNECTING -> Color.Yellow
-                                else -> Color.Red
-                            }
-                        )
-                    }
+                    Text("Order Chat")
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -83,34 +97,18 @@ fun ChatScreen(
                 messageText = uiState.messageText,
                 onMessageTextChange = viewModel::updateMessageText,
                 onSendMessage = viewModel::sendMessage,
-                isConnected = uiState.connectionState == ConnectionState.CONNECTED,
-                isLoading = uiState.isLoading
+                isConnected = true, // Simplified - we only show chat if connected
+                isLoading = false
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding() // Handle keyboard properly
         ) {
-            // Error message
-            uiState.error?.let { error ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = error,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-
             // Messages list
             if (uiState.messages.isEmpty()) {
                 Box(
@@ -136,7 +134,8 @@ fun ChatScreen(
                     items(uiState.messages) { message ->
                         MessageItem(
                             message = message,
-                            isCurrentUser = message.senderId == "current_user_id" // TODO: Get actual user ID
+                            isCurrentUser = message.senderId == "current_user", // Fixed: use consistent ID
+                            currentUserUsername = uiState.currentUserUsername
                         )
                     }
                 }
@@ -148,7 +147,8 @@ fun ChatScreen(
 @Composable
 fun MessageItem(
     message: ChatMessage,
-    isCurrentUser: Boolean
+    isCurrentUser: Boolean,
+    currentUserUsername: String? = null
 ) {
     val alignment = if (isCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val backgroundColor = if (isCurrentUser) {
@@ -168,13 +168,14 @@ fun MessageItem(
     }
 
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp), // Add small padding from screen edges
         contentAlignment = alignment
     ) {
         Card(
             modifier = Modifier
-                .widthIn(max = 280.dp)
-                .padding(horizontal = if (isCurrentUser) 48.dp else 0.dp),
+                .widthIn(max = 280.dp),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
@@ -197,10 +198,14 @@ fun MessageItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    // Sender name (only for other users)
-                    if (!isCurrentUser && !message.senderName.isNullOrEmpty()) {
+                    // Sender name for all messages
+                    if (!message.senderName.isNullOrEmpty()) {
                         Text(
-                            text = message.senderName,
+                            text = if (isCurrentUser) {
+                                currentUserUsername ?: message.senderName
+                            } else {
+                                message.senderName
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = textColor.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Bold
@@ -229,20 +234,6 @@ fun MessageItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = textColor.copy(alpha = 0.7f)
                     )
-                    
-                    if (isCurrentUser) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = when (message.deliveryStatus) {
-                                com.pavit.bundl.domain.model.DeliveryStatus.SENDING -> "⏳"
-                                com.pavit.bundl.domain.model.DeliveryStatus.SENT -> "✓"
-                                com.pavit.bundl.domain.model.DeliveryStatus.DELIVERED -> "✓✓"
-                                com.pavit.bundl.domain.model.DeliveryStatus.FAILED -> "❌"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = textColor.copy(alpha = 0.7f)
-                        )
-                    }
                 }
             }
         }
@@ -257,6 +248,8 @@ fun MessageInputBar(
     isConnected: Boolean,
     isLoading: Boolean
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(0.dp),
@@ -284,7 +277,10 @@ fun MessageInputBar(
             Spacer(modifier = Modifier.width(8.dp))
             
             FloatingActionButton(
-                onClick = onSendMessage,
+                onClick = {
+                    onSendMessage()
+                    keyboardController?.hide() // Dismiss keyboard after sending
+                },
                 modifier = Modifier.size(48.dp),
                 containerColor = MaterialTheme.colorScheme.primary,
                 elevation = FloatingActionButtonDefaults.elevation(0.dp)

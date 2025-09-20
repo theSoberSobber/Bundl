@@ -9,6 +9,8 @@ interface ChatRepository {
     
     // Connection management
     fun getConnectionState(): Flow<ConnectionState>
+    fun getConnectionErrors(): Flow<String?>
+    fun getUserUsername(): Flow<String?>
     suspend fun connect(userId: String)
     suspend fun disconnect()
     

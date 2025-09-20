@@ -40,6 +40,15 @@ class ChatRepositoryImpl @Inject constructor(
                 }
         }
 
+        // Listen for message sent confirmations
+        repositoryScope.launch {
+            webSocketService.messageSentConfirmations
+                .filterNotNull()
+                .collect { messageId ->
+                    handleMessageSentConfirmation(messageId)
+                }
+        }
+
         // Listen for order updates
         repositoryScope.launch {
             webSocketService.orderUpdates
@@ -61,6 +70,14 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun getConnectionState(): Flow<ConnectionState> {
         return webSocketService.connectionState
+    }
+    
+    override fun getConnectionErrors(): Flow<String?> {
+        return webSocketService.connectionErrors
+    }
+    
+    override fun getUserUsername(): Flow<String?> {
+        return webSocketService.userUsername
     }
 
     override suspend fun connect(userId: String) {
@@ -120,12 +137,12 @@ class ChatRepositoryImpl @Inject constructor(
             val messageId = UUID.randomUUID().toString()
             val timestamp = System.currentTimeMillis()
             
-            // Create local message with SENDING status
+            // Create local message with SENDING status (optimistic UI)
             val localMessage = ChatMessageEntity(
                 id = messageId,
                 orderId = orderId,
-                senderId = getCurrentUserId(), // You'll need to implement this
-                senderName = getCurrentUserName(), // You'll need to implement this
+                senderId = getCurrentUserId(),
+                senderName = getCurrentUserName(),
                 content = content,
                 messageType = MessageType.TEXT,
                 timestamp = timestamp,
@@ -133,14 +150,11 @@ class ChatRepositoryImpl @Inject constructor(
                 isSystemMessage = false
             )
             
-            // Insert to local database immediately
+            // Insert to local database immediately (shows in UI instantly)
             chatMessageDao.insertMessage(localMessage)
             
-            // Send via WebSocket
+            // Send via WebSocket (confirmation will update delivery status)
             webSocketService.sendMessage(orderId, content, messageId)
-            
-            // Update delivery status
-            chatMessageDao.updateMessageDeliveryStatus(messageId, DeliveryStatus.SENT)
             
             Result.success(localMessage.toDomain())
         } catch (e: Exception) {
@@ -191,11 +205,18 @@ class ChatRepositoryImpl @Inject constructor(
             timestamp = messageDto.timestamp
         )
         
-        // Increment unread count (you might want to check if user is currently viewing this chat)
+                // Increment unread count (you might want to check if user is currently viewing this chat)
         val currentRoom = chatRoomDao.getChatRoomByOrderId(messageDto.orderId)
         currentRoom?.let {
             chatRoomDao.updateUnreadCount(messageDto.orderId, it.unreadCount + 1)
         }
+    }
+
+    private suspend fun handleMessageSentConfirmation(messageId: String) {
+        Log.d(TAG, "Handling message sent confirmation: $messageId")
+        
+        // Update delivery status from SENDING to SENT
+        chatMessageDao.updateMessageDeliveryStatus(messageId, DeliveryStatus.SENT)
     }
 
     private suspend fun handleOrderUpdate(orderUpdate: com.pavit.bundl.data.remote.dto.OrderUpdateDto) {
@@ -241,15 +262,14 @@ class ChatRepositoryImpl @Inject constructor(
         chatMessageDao.insertMessage(systemMessage)
     }
 
-    // Helper methods - you'll need to implement these based on your auth system
+    // Helper methods
     private fun getCurrentUserId(): String {
-        // TODO: Get current user ID from your auth system
-        return "current_user_id"
+        // Use the current user ID from WebSocket service
+        return "current_user" // This will be the sender ID for current user messages
     }
 
     private fun getCurrentUserName(): String? {
-        // TODO: Get current user name from your auth system
-        return "Current User"
+        return webSocketService.userUsername.value ?: "You" // Use received username or fallback to "You"
     }
 }
 
