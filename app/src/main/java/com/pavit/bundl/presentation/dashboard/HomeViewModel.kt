@@ -104,6 +104,25 @@ class HomeViewModel @Inject constructor(
     }
     
     init {
+        // Initialize with current location if available
+        viewModelScope.launch {
+            // Get current location from LocationManager at startup
+            val currentLocation = getCurrentLocationUseCase.asFlow().first()
+            if (currentLocation.isFromUser) {
+                Log.d(TAG, "HomeViewModel initializing with real location: ${currentLocation.latitude}, ${currentLocation.longitude}")
+                initialLocation = currentLocation
+                _state.update { 
+                    it.copy(
+                        hasRealLocation = true,
+                        userLatitude = currentLocation.latitude,
+                        userLongitude = currentLocation.longitude
+                    )
+                }
+            } else {
+                Log.d(TAG, "HomeViewModel initializing with default location, will wait for real location")
+            }
+        }
+        
         // Get FCM token and register device if user is logged in
         viewModelScope.launch {
             checkLoginStatusUseCase().fold(

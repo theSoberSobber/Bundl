@@ -117,69 +117,51 @@ class MapboxProvider @Inject constructor(
     ) {
         val lifecycleOwner = LocalLifecycleOwner.current
         
-        // Get current location from location manager for live updates (but not initial camera position)
+        // Get current location from location manager for live updates
         val locationData by locationManager.currentLocation.collectAsState()
         
-        // Create and remember the viewport state
+        // Only render if shouldRenderMap is true (meaning we have real location)
+        if (!shouldRenderMap || locationData == null) {
+            return // Don't render anything, not even loading
+        }
+        
+        Log.d(TAG, "Rendering map with coordinates: $userLatitude, $userLongitude")
+        
+        // Create and remember the viewport state with real user coordinates
         val viewportState = rememberMapViewportState {
-            // Use the passed user coordinates for initial camera position
             setCameraOptions {
                 zoom(defaultZoomLevel)
                 center(Point.fromLngLat(userLongitude, userLatitude))
                 pitch(0.0)
                 bearing(0.0)
+                // Set padding to account for bottom sheet so location appears in visible area
+                padding(
+                    com.mapbox.maps.EdgeInsets(0.0, 0.0, 300.0, 0.0) // top, left, bottom, right
+                )
             }
-            Log.d(TAG, "Setting initial camera position to: $userLatitude, $userLongitude")
+            Log.d(TAG, "Initializing map camera at real location with visible area padding: $userLatitude, $userLongitude")
         }
         
-        // Update camera when coordinates change - use the same logic as the location button
-        LaunchedEffect(userLatitude, userLongitude, shouldRenderMap) {
-            if (shouldRenderMap) {
-                Log.d(TAG, "Updating camera to new coordinates with bottom padding: $userLatitude, $userLongitude")
-                // Use animateCamera with bottom padding like the location button does
-                val success = animateCamera(
-                    latitude = userLatitude,
-                    longitude = userLongitude,
-                    zoom = 16.0, // Same zoom as when no orders are present
-                    duration = 1000,
-                    paddingBottom = 300f // Same padding as FitMapToOrdersUseCase
-                )
-                if (!success) {
-                    Log.w(TAG, "Failed to animate camera to user location")
-                }
+        // Update camera when coordinates change - center in visible area
+        LaunchedEffect(userLatitude, userLongitude) {
+            Log.d(TAG, "User coordinates changed, updating camera with visible area padding: $userLatitude, $userLongitude")
+            // Use animateCamera with bottom padding for visible area centering
+            val success = animateCamera(
+                latitude = userLatitude,
+                longitude = userLongitude,
+                zoom = 16.0,
+                duration = 1000,
+                paddingBottom = 300f // Same padding as FitMapToOrdersUseCase
+            )
+            if (!success) {
+                Log.w(TAG, "Failed to animate camera to user location")
             }
         }
         
         // Store the viewport state for external control
         currentViewportState = viewportState
         
-        // If shouldRenderMap is false, show loading instead
-        if (!shouldRenderMap) {
-            Box(
-                modifier = modifier.fillMaxSize().background(
-                    if (isDarkMode) Color(0xFF121212) else Color(0xFFF5F5F5)
-                ),
-                contentAlignment = androidx.compose.ui.Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Getting your location...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            return
-        }
-        
-        // Render the Mapbox map
+        // Render the Mapbox map with real location
         MapboxMap(
             modifier = modifier.fillMaxSize(),
             style = { MapStyle(style = if (isDarkMode) Style.DARK else Style.OUTDOORS) },
@@ -187,7 +169,7 @@ class MapboxProvider @Inject constructor(
         ) {
             // Add user location marker (blue)
             CircleAnnotation(
-                point = Point.fromLngLat(locationData.longitude, locationData.latitude)
+                point = Point.fromLngLat(locationData?.longitude ?: userLongitude, locationData?.latitude ?: userLatitude)
             ) {
                 circleRadius = 12.0
                 circleColor = userLocationColor
@@ -195,7 +177,7 @@ class MapboxProvider @Inject constructor(
                 circleStrokeColor = Color.White
                 
                 interactionsState.onClicked {
-                    Log.d(TAG, "Current location clicked at: ${locationData.latitude}, ${locationData.longitude}")
+                    Log.d(TAG, "Current location clicked at: ${locationData?.latitude ?: userLatitude}, ${locationData?.longitude ?: userLongitude}")
                     true
                 }
             }
@@ -224,7 +206,7 @@ class MapboxProvider @Inject constructor(
         
         // Log when location changes
         LaunchedEffect(locationData) {
-            Log.d(TAG, "User location updated: ${locationData.latitude}, ${locationData.longitude} - Only marker position updated, not camera")
+            Log.d(TAG, "User location updated: ${locationData?.latitude}, ${locationData?.longitude} - Only marker position updated, not camera")
         }
     }
     
@@ -247,7 +229,7 @@ class MapboxProvider @Inject constructor(
     override fun centerOnUserLocation(): Boolean {
         val currentLocation = locationManager.currentLocation.value
         
-        if (currentLocation.isFromUser) {
+        if (currentLocation?.isFromUser == true) {
             // Enable auto-follow
             enableAutoFollow()
             

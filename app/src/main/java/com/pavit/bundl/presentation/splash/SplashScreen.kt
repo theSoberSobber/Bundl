@@ -10,19 +10,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
+import android.util.Log
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun SplashScreen(
-    onCheckComplete: () -> Unit
+    onCheckComplete: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
 ) {
-    // This simulates a minimum display time for the splash screen
-    LaunchedEffect(Unit) {
-        delay(500) // Give a minimum time for the splash screen to be visible
-        onCheckComplete()
+    val locationData by viewModel.locationManager.currentLocation.collectAsState()
+    
+    LaunchedEffect(locationData) {
+        Log.d("SplashScreen", "Location updated: lat=${locationData?.latitude}, lng=${locationData?.longitude}, isFromUser=${locationData?.isFromUser}")
+        
+        if (locationData?.isFromUser == true) {
+            Log.d("SplashScreen", "Real location obtained, proceeding to main app")
+            onCheckComplete()
+        } else {
+            Log.d("SplashScreen", "Still waiting for real location (using default)")
+        }
     }
     
     Column(
@@ -38,7 +49,7 @@ fun SplashScreen(
         )
         
         Text(
-            text = "Loading...",
+            text = if (locationData?.isFromUser == true) "Ready!" else "Getting your location...",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 16.dp)
         )

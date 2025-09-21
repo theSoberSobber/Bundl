@@ -29,17 +29,16 @@ class LocationManager @Inject constructor(
 ) {
     private val tag = "LocationManager"
     
-    // Default location (Bangalore)
+    // Default location (Bangalore) - only used as fallback
     private val defaultLatitude = 12.9716
     private val defaultLongitude = 77.5946
     
     private val fusedLocationClient: FusedLocationProviderClient = 
         LocationServices.getFusedLocationProviderClient(context)
     
-    private val _currentLocation = MutableStateFlow(
-        LocationData(defaultLatitude, defaultLongitude, false)
-    )
-    val currentLocation: StateFlow<LocationData> = _currentLocation
+    // Don't emit any location until we have a real one
+    private val _currentLocation = MutableStateFlow<LocationData?>(null)
+    val currentLocation: StateFlow<LocationData?> = _currentLocation
     
     private var locationCallback: LocationCallback? = null
     private var locationUpdatesActive = false

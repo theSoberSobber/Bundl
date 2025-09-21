@@ -16,9 +16,9 @@ class LocationRepositoryImpl @Inject constructor(
     override fun getCurrentLocation(): Flow<LocationData> {
         return locationManager.currentLocation.map { locationData ->
             LocationData(
-                latitude = locationData.latitude,
-                longitude = locationData.longitude,
-                isFromUser = locationData.isFromUser
+                latitude = locationData?.latitude ?: 12.9716,
+                longitude = locationData?.longitude ?: 77.5946,
+                isFromUser = locationData?.isFromUser ?: false
             )
         }
     }
