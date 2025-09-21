@@ -2,7 +2,16 @@ package com.pavit.bundl.data.maps
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.pavit.bundl.domain.maps.MapProvider
@@ -100,26 +110,74 @@ class MapboxProvider @Inject constructor(
         modifier: Modifier,
         orders: List<Order>,
         onMarkerClick: (Order) -> Unit,
-        isDarkMode: Boolean
+        isDarkMode: Boolean,
+        shouldRenderMap: Boolean,
+        userLatitude: Double,
+        userLongitude: Double
     ) {
         val lifecycleOwner = LocalLifecycleOwner.current
         
-        // Get current location from location manager
+        // Get current location from location manager for live updates (but not initial camera position)
         val locationData by locationManager.currentLocation.collectAsState()
         
         // Create and remember the viewport state
         val viewportState = rememberMapViewportState {
-            // Only set the initial camera position once, when the map is first created
+            // Use the passed user coordinates for initial camera position
             setCameraOptions {
                 zoom(defaultZoomLevel)
-                center(Point.fromLngLat(locationData.longitude, locationData.latitude))
+                center(Point.fromLngLat(userLongitude, userLatitude))
                 pitch(0.0)
                 bearing(0.0)
+            }
+            Log.d(TAG, "Setting initial camera position to: $userLatitude, $userLongitude")
+        }
+        
+        // Update camera when coordinates change - use the same logic as the location button
+        LaunchedEffect(userLatitude, userLongitude, shouldRenderMap) {
+            if (shouldRenderMap) {
+                Log.d(TAG, "Updating camera to new coordinates with bottom padding: $userLatitude, $userLongitude")
+                // Use animateCamera with bottom padding like the location button does
+                val success = animateCamera(
+                    latitude = userLatitude,
+                    longitude = userLongitude,
+                    zoom = 16.0, // Same zoom as when no orders are present
+                    duration = 1000,
+                    paddingBottom = 300f // Same padding as FitMapToOrdersUseCase
+                )
+                if (!success) {
+                    Log.w(TAG, "Failed to animate camera to user location")
+                }
             }
         }
         
         // Store the viewport state for external control
         currentViewportState = viewportState
+        
+        // If shouldRenderMap is false, show loading instead
+        if (!shouldRenderMap) {
+            Box(
+                modifier = modifier.fillMaxSize().background(
+                    if (isDarkMode) Color(0xFF121212) else Color(0xFFF5F5F5)
+                ),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Getting your location...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            return
+        }
         
         // Render the Mapbox map
         MapboxMap(

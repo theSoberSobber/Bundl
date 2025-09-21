@@ -226,13 +226,21 @@ fun HomeTab(
                 }
         ) {
             // Map view rendered at full screen
+            // Debug log the coordinates being passed to the map
+            LaunchedEffect(state.hasRealLocation, state.userLatitude, state.userLongitude) {
+                android.util.Log.d("BUNDL_MAP", "Rendering map: hasRealLocation=${state.hasRealLocation}, coordinates=(${state.userLatitude}, ${state.userLongitude})")
+            }
+            
             mapProvider.RenderMap(
                 modifier = Modifier.fillMaxSize(),
                 orders = state.activeOrders,
                 onMarkerClick = { order -> 
                     viewModel.selectOrderOnMap(order)
                 },
-                isDarkMode = isDarkMap
+                isDarkMode = isDarkMap,
+                shouldRenderMap = state.hasRealLocation,
+                userLatitude = state.userLatitude,
+                userLongitude = state.userLongitude
             )
         }
             
