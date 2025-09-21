@@ -147,7 +147,7 @@ fun OnboardingPage(
             text = page.title,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 16.dp)
         )
@@ -155,7 +155,7 @@ fun OnboardingPage(
         Text(
             text = page.description,
             fontSize = 16.sp,
-            color = Color.White.copy(alpha = 0.8f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
             textAlign = TextAlign.Center,
             lineHeight = 24.sp
         )

@@ -399,7 +399,7 @@ fun EmptyOrdersCard() {
                 text = "No Active Orders Available",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
         }

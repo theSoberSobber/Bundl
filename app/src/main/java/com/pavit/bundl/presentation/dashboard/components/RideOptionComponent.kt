@@ -56,7 +56,7 @@ fun RideOption(
                     text = order.platform.replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = BundlColors.TextPrimary // White text for dark surface
                 )
                 
                 // Right side: Chat icon + Users count

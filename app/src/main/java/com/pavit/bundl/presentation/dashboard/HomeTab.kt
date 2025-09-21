@@ -267,8 +267,8 @@ fun HomeTab(
             FloatingActionButton(
                 onClick = { isDarkMap = !isDarkMap },
                 modifier = Modifier.size(40.dp),
-                containerColor = Color(0xCC000000), // Semi-transparent black
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Text(
                     text = if (isDarkMap) "🌙" else "☀️",
@@ -299,8 +299,8 @@ fun HomeTab(
                     -16.dp
                 })
                 .padding(end = 16.dp),
-            containerColor = Color(0xCC000000), // Semi-transparent black
-            contentColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_location),
@@ -408,7 +408,7 @@ fun HomeTab(
                         text = "Choose an order",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     
                     var isBlackBackground by remember { mutableStateOf(false) }
