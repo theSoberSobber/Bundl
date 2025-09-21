@@ -339,7 +339,7 @@ fun HomeTab(
                             Text(
                                 text = "Notify nearby orders",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White,
+                                color = BundlColors.TextPrimary,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
@@ -408,7 +408,7 @@ fun HomeTab(
                         text = "Choose an order",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = BundlColors.TextPrimary
                     )
                     
                     var isBlackBackground by remember { mutableStateOf(false) }
@@ -497,7 +497,7 @@ fun HomeTab(
                                 text = "Get More Credits",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
-                                color = Color.White
+                                color = BundlColors.TextPrimary
                             )
                             
                             Spacer(modifier = Modifier.weight(1f))
@@ -524,11 +524,11 @@ fun HomeTab(
                                 Log.d("BUNDL_CREDITS", "Displaying credits value from API: $creditsValue")
                                 
                                 // Show the actual value from API
-                        Text(
+            Text(
                                     text = "$creditsValue",
                             style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color.White
+                    color = BundlColors.TextPrimary
                                 )
                             }
                         }
@@ -577,7 +577,7 @@ fun HomeTab(
                                         Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = "Refresh orders and credits",
-                                    tint = Color.White,
+                                    tint = BundlColors.TextPrimary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

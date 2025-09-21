@@ -101,6 +101,7 @@ fun GetMoreCreditsScreen(
     navController: NavController,
     viewModel: CreditsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val state by viewModel.state.collectAsState()
     var selectedPackage by remember { mutableStateOf<CreditPackage?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -142,11 +143,16 @@ fun GetMoreCreditsScreen(
             TopAppBar(
                 title = { Text("Get More Credits") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            // If this screen is hosted in its own Activity (CreditActivity), finish it
+                            (context as? android.app.Activity)?.finish()
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack, 
-                            contentDescription = "Back",
-                            tint = Color.White
+                            contentDescription = "Back"
                         )
                     }
                 },

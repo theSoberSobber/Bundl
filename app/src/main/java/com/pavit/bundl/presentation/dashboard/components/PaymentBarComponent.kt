@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pavit.bundl.presentation.theme.BundlColors
 
 @Composable
 fun PaymentBar(
@@ -40,7 +41,7 @@ fun PaymentBar(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = BundlColors.TextPrimary,
                     modifier = Modifier.size(20.dp)
                 )
                 
@@ -51,7 +52,7 @@ fun PaymentBar(
                     text = "Personal",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White
+                    color = BundlColors.TextPrimary
                 )
                 
                 Spacer(modifier = Modifier.width(4.dp))
@@ -69,7 +70,7 @@ fun PaymentBar(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Payment options",
-                    tint = Color.White,
+                    tint = BundlColors.TextPrimary,
                     modifier = Modifier.size(20.dp)
                 )
                 
@@ -79,7 +80,7 @@ fun PaymentBar(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowUp,
                     contentDescription = "Expand",
-                    tint = Color.White,
+                    tint = BundlColors.TextPrimary,
                     modifier = Modifier
                         .size(24.dp)
                         .clickable { onExpand() }
@@ -102,7 +103,7 @@ fun PaymentBar(
                     text = "Choose Uber Go",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = BundlColors.TextPrimary
                 )
             }
         }

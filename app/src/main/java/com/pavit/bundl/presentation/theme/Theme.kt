@@ -43,17 +43,22 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun BundlTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true, // force dark mode always
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            // if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            dynamicDarkColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        else -> {
+            // darkTheme -> DarkColorScheme
+            // else -> LightColorScheme
+            DarkColorScheme
+        }
     }
     
     val view = LocalView.current
