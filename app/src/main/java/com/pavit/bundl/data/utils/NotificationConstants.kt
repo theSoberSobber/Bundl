@@ -13,7 +13,7 @@ object NotificationConstants {
     // Notification content
     const val NOTIFICATION_TITLE = "Listening for Orders Nearby"
     const val NOTIFICATION_TEXT_DEFAULT = "Monitoring your area for new orders"
-    const val NOTIFICATION_TEXT_SETUP = "Setting up nearby monitoring..."
+    const val NOTIFICATION_TEXT_SETUP = "Calculating nearby areas..."
     
     // Notification ID
     const val LOCATION_NOTIFICATION_ID = 12345
