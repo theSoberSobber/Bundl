@@ -19,6 +19,7 @@ object BundlColors {
     val TextDisabled = Color.Gray                 // Disabled text
     
     // Component colors
+    val ButtonPrimary = Color(0xFF1E3A8A)         // Primary button background (dark blue)
     val ButtonDisabled = Color(0xFF2C2C2C)        // Disabled button background
     val ProgressTrack = Color(0xFF4D4D4D)         // Progress indicator track
     val DividerColor = Color(0xFF444444)          // Dividers and separators

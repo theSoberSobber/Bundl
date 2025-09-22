@@ -30,11 +30,13 @@ private val LightColorScheme = lightColorScheme(
 
 private val DarkColorScheme = darkColorScheme(
     primary = Blue,
+    primaryContainer = ButtonBlue,
     secondary = LightBlue,
     tertiary = DarkBlue,
     background = Black,
     surface = DarkGray,
     onPrimary = White,
+    onPrimaryContainer = White,
     onSecondary = White,
     onTertiary = White,
     onBackground = White,

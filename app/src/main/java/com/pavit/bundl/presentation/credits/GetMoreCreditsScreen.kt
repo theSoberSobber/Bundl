@@ -157,9 +157,9 @@ fun GetMoreCreditsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -362,7 +362,8 @@ fun GetMoreCreditsScreen(
                             .height(56.dp),
                         enabled = (selectedPackage != null && !state.isProcessing && !state.isVerifying),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             disabledContainerColor = Color.Gray
                         ),
                         shape = RoundedCornerShape(8.dp)
@@ -370,7 +371,7 @@ fun GetMoreCreditsScreen(
                         when {
                             state.isProcessing -> {
                                 CircularProgressIndicator(
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -379,12 +380,12 @@ fun GetMoreCreditsScreen(
                                     text = "Processing...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                             state.isVerifying -> {
                                 CircularProgressIndicator(
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -393,7 +394,7 @@ fun GetMoreCreditsScreen(
                                     text = "Verifying Payment...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                             else -> {
@@ -401,7 +402,7 @@ fun GetMoreCreditsScreen(
                                     text = selectedPackage?.let { "Buy ${it.credits} Credits for ₹${it.price}" } ?: "Select a Package",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
