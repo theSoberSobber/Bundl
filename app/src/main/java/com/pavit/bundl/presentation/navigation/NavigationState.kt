@@ -22,19 +22,22 @@ sealed class NavigationState {
             isLoggedIn: Boolean,
             navigationRepository: NavigationRepository
         ): NavigationState {
-            // Check location permissions first - MANDATORY for the app to function
+            // Check permissions first - BOTH are mandatory for the app to function
             val hasLocationPermissions = navigationRepository.hasLocationPermissions()
+            val hasNotificationPermissions = navigationRepository.hasNotificationPermissions()
             
-            return if (!hasLocationPermissions) {
-                // No location permission - must go through permission flow
-                // even if logged in (e.g., "Only this time" expired)
-                LocationPermission
-            } else if (isLoggedIn) {
-                // Has location permission and logged in - go to dashboard
-                Dashboard
-            } else {
-                // Has location permission but not logged in - start onboarding
-                Onboarding
+            return when {
+                // Missing location permission - highest priority
+                !hasLocationPermissions -> LocationPermission
+                
+                // Has location but missing notification permission
+                !hasNotificationPermissions -> NotificationPermission
+                
+                // Has both permissions and logged in - go to dashboard
+                isLoggedIn -> Dashboard
+                
+                // Has both permissions but not logged in - start onboarding
+                else -> Onboarding
             }
         }
         
@@ -59,26 +62,35 @@ sealed class NavigationState {
             navigationRepository: NavigationRepository,
             isLoggedIn: Boolean
         ): NavigationState {
-            // If already logged in, go straight to dashboard
-            if (isLoggedIn) {
-                return Dashboard
-            }
-            
-            // Not logged in - check notification permissions
+            // Check notification permissions - MANDATORY for both logged-in and new users
             val hasNotificationPermissions = navigationRepository.hasNotificationPermissions()
             
-            return if (!hasNotificationPermissions) {
-                NotificationPermission
+            if (!hasNotificationPermissions) {
+                // Need notification permission regardless of login status
+                return NotificationPermission
+            }
+            
+            // Has both location and notification permissions
+            return if (isLoggedIn) {
+                // Already logged in - go straight to dashboard
+                Dashboard
             } else {
+                // Not logged in - need to login first
                 Login
             }
         }
         
         /**
-         * Always go to login after notification permission
+         * Determines what comes after notification permission
          */
-        fun determineNextAfterNotification(): NavigationState {
-            return Login
+        fun determineNextAfterNotification(isLoggedIn: Boolean): NavigationState {
+            return if (isLoggedIn) {
+                // Already logged in - go to dashboard
+                Dashboard
+            } else {
+                // Not logged in - go to login
+                Login
+            }
         }
     }
 }
@@ -134,7 +146,7 @@ class NavigationStateManager(private val navigationRepository: NavigationReposit
             }
             
             NavigationEvent.NotificationPermissionGranted -> {
-                val newState = NavigationState.determineNextAfterNotification()
+                val newState = NavigationState.determineNextAfterNotification(isLoggedIn)
                 NavigationResult(newState, shouldClearBackstack = false)
             }
             
