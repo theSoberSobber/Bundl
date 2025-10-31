@@ -1,6 +1,7 @@
 package com.pavit.bundl.presentation.navigation
 
 import com.pavit.bundl.domain.repository.NavigationRepository
+import kotlinx.coroutines.flow.first
 
 /**
  * Navigation State Machine for clean user flow management
@@ -22,12 +23,20 @@ sealed class NavigationState {
             isLoggedIn: Boolean,
             navigationRepository: NavigationRepository
         ): NavigationState {
-            // Check permissions first - BOTH are mandatory for the app to function
+            // FIRST: Check if user has seen onboarding - if not, ALWAYS show it
+            val hasSeenOnboarding = navigationRepository.hasSeenOnboarding().first()
+            
+            if (!hasSeenOnboarding) {
+                // Fresh user - always start with onboarding
+                return Onboarding
+            }
+            
+            // User has seen onboarding - now check permissions (BOTH are mandatory)
             val hasLocationPermissions = navigationRepository.hasLocationPermissions()
             val hasNotificationPermissions = navigationRepository.hasNotificationPermissions()
             
             return when {
-                // Missing location permission - highest priority
+                // Missing location permission - highest priority after onboarding
                 !hasLocationPermissions -> LocationPermission
                 
                 // Has location but missing notification permission
@@ -36,8 +45,8 @@ sealed class NavigationState {
                 // Has both permissions and logged in - go to dashboard
                 isLoggedIn -> Dashboard
                 
-                // Has both permissions but not logged in - start onboarding
-                else -> Onboarding
+                // Has both permissions but not logged in - need to login
+                else -> Login
             }
         }
         
