@@ -30,16 +30,8 @@ class NavigationRepositoryImpl @Inject constructor(
     }
     
     override fun hasLocationPermissions(): Boolean {
-        // Check basic location permissions
-        val hasBasicLocation = PermissionHandler.hasPermissions(context, PermissionHandler.locationPermissions)
-        
-        // For Android 10+, also check background location
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            hasBasicLocation && PermissionHandler.hasPermissions(context, PermissionHandler.backgroundLocationPermissions)
-        } else {
-            // Android 9 and below - basic location is enough
-            hasBasicLocation
-        }
+        // Check basic location permissions - foreground service handles background access!
+        return PermissionHandler.hasPermissions(context, PermissionHandler.locationPermissions)
     }
     
     override fun hasNotificationPermissions(): Boolean {

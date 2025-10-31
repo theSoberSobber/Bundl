@@ -22,10 +22,18 @@ sealed class NavigationState {
             isLoggedIn: Boolean,
             navigationRepository: NavigationRepository
         ): NavigationState {
-            return if (isLoggedIn) {
+            // Check location permissions first - MANDATORY for the app to function
+            val hasLocationPermissions = navigationRepository.hasLocationPermissions()
+            
+            return if (!hasLocationPermissions) {
+                // No location permission - must go through permission flow
+                // even if logged in (e.g., "Only this time" expired)
+                LocationPermission
+            } else if (isLoggedIn) {
+                // Has location permission and logged in - go to dashboard
                 Dashboard
             } else {
-                // Not logged in - always start from onboarding for better UX
+                // Has location permission but not logged in - start onboarding
                 Onboarding
             }
         }
@@ -47,7 +55,16 @@ sealed class NavigationState {
         /**
          * Determines what comes after location permission
          */
-        suspend fun determineNextAfterLocation(navigationRepository: NavigationRepository): NavigationState {
+        suspend fun determineNextAfterLocation(
+            navigationRepository: NavigationRepository,
+            isLoggedIn: Boolean
+        ): NavigationState {
+            // If already logged in, go straight to dashboard
+            if (isLoggedIn) {
+                return Dashboard
+            }
+            
+            // Not logged in - check notification permissions
             val hasNotificationPermissions = navigationRepository.hasNotificationPermissions()
             
             return if (!hasNotificationPermissions) {
@@ -112,7 +129,7 @@ class NavigationStateManager(private val navigationRepository: NavigationReposit
             }
             
             NavigationEvent.LocationPermissionGranted -> {
-                val newState = NavigationState.determineNextAfterLocation(navigationRepository)
+                val newState = NavigationState.determineNextAfterLocation(navigationRepository, isLoggedIn)
                 NavigationResult(newState, shouldClearBackstack = false)
             }
             
