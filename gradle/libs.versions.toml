@@ -65,9 +65,9 @@ accompanist-pager-indicators = { module = "com.google.accompanist:accompanist-pa
 play-services-location = { module = "com.google.android.gms:play-services-location", version = "21.0.1" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version = "21.3.0" }
 
-# Mapbox
-mapbox = { module = "com.mapbox.maps:android", version = "11.12.0" }
-mapbox-compose = { module = "com.mapbox.extension:maps-compose", version = "11.12.0" }
+# Mapbox (NDK27 variant for 16KB page size support)
+mapbox = { module = "com.mapbox.maps:android-ndk27", version = "11.16.2" }
+mapbox-compose = { module = "com.mapbox.extension:maps-compose", version = "11.16.2" }
 
 # RevenueCat
 revenuecat = { module = "com.revenuecat.purchases:purchases", version = "9.1.0" }
