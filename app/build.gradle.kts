@@ -18,8 +18,8 @@ android {
         applicationId = "com.pavit.bundl"
         minSdk = 24
         targetSdk = 35
-        versionCode = 11
-        versionName = "(11) 1.2.0"
+        versionCode = 12
+        versionName = "(12) 1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
