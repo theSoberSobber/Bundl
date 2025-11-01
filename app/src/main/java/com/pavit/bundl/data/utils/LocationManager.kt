@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
 import android.util.Log
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -67,7 +66,6 @@ class LocationManager @Inject constructor(
     fun tryGetLastLocation() {
         if (!hasLocationPermission()) {
             Log.d(tag, "Cannot get location - no permission")
-            Toast.makeText(context, "🚫 Location: No permission", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -76,23 +74,15 @@ class LocationManager @Inject constructor(
                 location?.let {
                     updateLocation(it)
                     Log.d(tag, "Last location: ${it.latitude}, ${it.longitude}")
-                    Toast.makeText(
-                        context, 
-                        "📍 Location found: ${String.format("%.4f", it.latitude)}, ${String.format("%.4f", it.longitude)}", 
-                        Toast.LENGTH_LONG
-                    ).show()
                 } ?: run {
                     Log.d(tag, "Last location is null, will start location updates")
-                    Toast.makeText(context, "⏳ Location not cached, requesting updates...", Toast.LENGTH_SHORT).show()
                     startLocationUpdates()
                 }
             }.addOnFailureListener { e ->
                 Log.e(tag, "Error getting last location", e)
-                Toast.makeText(context, "❌ Failed to get location: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         } catch (e: SecurityException) {
             Log.e(tag, "Security exception when getting last location", e)
-            Toast.makeText(context, "❌ Security exception: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -114,11 +104,6 @@ class LocationManager @Inject constructor(
                 override fun onLocationResult(result: LocationResult) {
                     result.lastLocation?.let { location ->
                         updateLocation(location)
-                        Toast.makeText(
-                            context, 
-                            "🔄 Location updated: ${String.format("%.4f", location.latitude)}, ${String.format("%.4f", location.longitude)}", 
-                            Toast.LENGTH_SHORT
-                        ).show()
                     }
                 }
             }
