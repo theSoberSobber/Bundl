@@ -232,7 +232,10 @@ fun HomeTab(
                 onMarkerClick = { order -> 
                     viewModel.selectOrderOnMap(order)
                 },
-                isDarkMode = isDarkMap
+                isDarkMode = isDarkMap,
+                shouldRenderMap = state.hasRealLocation, // Only render when we have real location
+                userLatitude = state.userLatitude,
+                userLongitude = state.userLongitude
             )
         }
             
@@ -267,8 +270,8 @@ fun HomeTab(
             FloatingActionButton(
                 onClick = { isDarkMap = !isDarkMap },
                 modifier = Modifier.size(40.dp),
-                containerColor = Color(0xCC000000), // Semi-transparent black
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Text(
                     text = if (isDarkMap) "🌙" else "☀️",
@@ -299,8 +302,8 @@ fun HomeTab(
                     -16.dp
                 })
                 .padding(end = 16.dp),
-            containerColor = Color(0xCC000000), // Semi-transparent black
-            contentColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_location),
@@ -339,7 +342,7 @@ fun HomeTab(
                             Text(
                                 text = "Notify nearby orders",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White,
+                                color = BundlColors.TextPrimary,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
@@ -408,7 +411,7 @@ fun HomeTab(
                         text = "Choose an order",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = BundlColors.TextPrimary
                     )
                     
                     var isBlackBackground by remember { mutableStateOf(false) }
@@ -497,7 +500,7 @@ fun HomeTab(
                                 text = "Get More Credits",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
-                                color = Color.White
+                                color = BundlColors.TextPrimary
                             )
                             
                             Spacer(modifier = Modifier.weight(1f))
@@ -524,11 +527,11 @@ fun HomeTab(
                                 Log.d("BUNDL_CREDITS", "Displaying credits value from API: $creditsValue")
                                 
                                 // Show the actual value from API
-                        Text(
+            Text(
                                     text = "$creditsValue",
                             style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color.White
+                    color = BundlColors.TextPrimary
                                 )
                             }
                         }
@@ -577,7 +580,7 @@ fun HomeTab(
                                         Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = "Refresh orders and credits",
-                                    tint = Color.White,
+                                    tint = BundlColors.TextPrimary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

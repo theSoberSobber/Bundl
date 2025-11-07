@@ -13,13 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.pavit.bundl.domain.payment.PaymentService
 import com.pavit.bundl.presentation.theme.BundlTheme
-import com.cashfree.pg.core.api.callback.CFCheckoutResponseCallback
-import com.cashfree.pg.core.api.utils.CFErrorResponse
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class CreditActivity : ComponentActivity(), CFCheckoutResponseCallback {
+class CreditActivity : ComponentActivity(), PaymentService.PaymentCallback {
     
     @Inject
     lateinit var paymentService: PaymentService
@@ -33,7 +31,7 @@ class CreditActivity : ComponentActivity(), CFCheckoutResponseCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize Cashfree with this activity as the callback handler
+        // Initialize PaymentService with RevenueCat callback
         paymentService.initialize(this, this)
         
         setContent {
@@ -54,13 +52,18 @@ class CreditActivity : ComponentActivity(), CFCheckoutResponseCallback {
         }
     }
     
-    override fun onPaymentVerify(orderId: String) {
-        Log.d(TAG, "Payment verified for order: $orderId")
+    override fun onPaymentSuccess(orderId: String, credits: Int) {
+        Log.d(TAG, "Payment successful for order: $orderId, credits: $credits")
         viewModel.onPaymentCompleted(true, null)
     }
     
-    override fun onPaymentFailure(cfErrorResponse: CFErrorResponse, orderId: String) {
-        Log.e(TAG, "Payment failed for order: $orderId, error: ${cfErrorResponse.message}")
-        viewModel.onPaymentCompleted(false, cfErrorResponse.message)
+    override fun onPaymentFailure(error: String) {
+        Log.e(TAG, "Payment failed: $error")
+        viewModel.onPaymentCompleted(false, error)
+    }
+    
+    override fun onPaymentCancelled() {
+        Log.d(TAG, "Payment cancelled by user")
+        viewModel.onPaymentCompleted(false, "Payment cancelled")
     }
 } 

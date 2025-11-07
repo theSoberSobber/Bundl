@@ -87,13 +87,13 @@ fun CreateOrderDialog(
             }
         },
         dismissButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = BundlColors.SurfaceLight
-                )
+            TextButton(
+                onClick = onDismiss
             ) {
-                Text("Cancel")
+                Text(
+                    "Cancel",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     )

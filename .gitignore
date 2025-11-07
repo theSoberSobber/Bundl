@@ -2,7 +2,8 @@
 build/
 logs/
 *.hprof
-local.properties
 *.iml
 .idea/
 
+# Local and Kyestore properties (contains API keys and Keystore password)
+*.properties

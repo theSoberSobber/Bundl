@@ -39,7 +39,7 @@ class GeohashLocationUseCase @Inject constructor(
             // Start observing location changes for immediate geohash subscription updates
             serviceScope.launch {
                 locationManager.currentLocation.collect { locationData ->
-                    if (locationData.isFromUser) {
+                    if (locationData?.isFromUser == true) {
                         updateGeohashSubscriptions(locationData)
                     }
                 }

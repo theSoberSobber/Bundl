@@ -118,6 +118,10 @@ fun MyOrdersScreen(
                         RideOption(
                             order = order,
                             onClick = {},
+                            onChatClick = { orderId ->
+                                // Navigate to chat screen using Route
+                                navController.navigate("chat/$orderId")
+                            },
                             isSelected = false,
                             isFeatured = false
                         )
@@ -395,7 +399,7 @@ fun EmptyOrdersCard() {
                 text = "No Active Orders Available",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
         }

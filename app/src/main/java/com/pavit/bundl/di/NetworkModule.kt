@@ -10,9 +10,11 @@ import com.pavit.bundl.utils.network.PlainTextConverterFactory
 import com.pavit.bundl.utils.network.AuthAuthenticator
 import com.pavit.bundl.utils.network.AuthInterceptor
 import com.pavit.bundl.utils.network.TimingInterceptor
+import com.pavit.bundl.utils.network.NetworkConfig
 import com.pavit.bundl.domain.payment.PaymentService
 import com.pavit.bundl.data.remote.dto.OrderStatusResponse
 import com.pavit.bundl.presentation.orders.OrderStatusResponseDeserializer
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
@@ -54,8 +56,6 @@ annotation class AuthenticatorRetrofit
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    private const val BASE_URL = "https://backend-bundl.1110777.xyz"
-    // private const val BASE_URL = "http://192.168.53.152:3002"
 
     @Provides
     @Singleton
@@ -129,7 +129,7 @@ object NetworkModule {
     @AuthRetrofit
     fun provideAuthRetrofit(@AuthOkHttpClient okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(NetworkConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -140,7 +140,7 @@ object NetworkModule {
     @AuthenticatorRetrofit
     fun provideAuthenticatorRetrofit(@AuthenticatorOkHttpClient okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(NetworkConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -148,14 +148,18 @@ object NetworkModule {
     
     @Provides
     @Singleton
-    @RegularRetrofit
-    fun provideRegularRetrofit(@RegularOkHttpClient okHttpClient: OkHttpClient): Retrofit {
-        val gson = GsonBuilder()
+    fun provideGson(): Gson {
+        return GsonBuilder()
             .registerTypeAdapter(OrderStatusResponse::class.java, OrderStatusResponseDeserializer())
             .create()
-        
+    }
+    
+    @Provides
+    @Singleton
+    @RegularRetrofit
+    fun provideRegularRetrofit(@RegularOkHttpClient okHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(NetworkConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(PlainTextConverterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(gson))
@@ -182,7 +186,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun providePaymentService(creditsService: CreditsService): PaymentService {
-        return PaymentService(creditsService)
+    fun providePaymentService(revenueCatManager: com.pavit.bundl.domain.payment.RevenueCatManager): PaymentService {
+        return PaymentService(revenueCatManager)
     }
 } 

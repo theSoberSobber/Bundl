@@ -2,7 +2,16 @@ package com.pavit.bundl.data.maps
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.pavit.bundl.domain.maps.MapProvider
@@ -100,28 +110,58 @@ class MapboxProvider @Inject constructor(
         modifier: Modifier,
         orders: List<Order>,
         onMarkerClick: (Order) -> Unit,
-        isDarkMode: Boolean
+        isDarkMode: Boolean,
+        shouldRenderMap: Boolean,
+        userLatitude: Double,
+        userLongitude: Double
     ) {
         val lifecycleOwner = LocalLifecycleOwner.current
         
-        // Get current location from location manager
+        // Get current location from location manager for live updates
         val locationData by locationManager.currentLocation.collectAsState()
         
-        // Create and remember the viewport state
+        // Only render if shouldRenderMap is true (meaning we have real location)
+        if (!shouldRenderMap || locationData == null) {
+            return // Don't render anything, not even loading
+        }
+        
+        Log.d(TAG, "Rendering map with coordinates: $userLatitude, $userLongitude")
+        
+        // Create and remember the viewport state with real user coordinates
         val viewportState = rememberMapViewportState {
-            // Only set the initial camera position once, when the map is first created
             setCameraOptions {
                 zoom(defaultZoomLevel)
-                center(Point.fromLngLat(locationData.longitude, locationData.latitude))
+                center(Point.fromLngLat(userLongitude, userLatitude))
                 pitch(0.0)
                 bearing(0.0)
+                // Set padding to account for bottom sheet so location appears in visible area
+                padding(
+                    com.mapbox.maps.EdgeInsets(0.0, 0.0, 300.0, 0.0) // top, left, bottom, right
+                )
+            }
+            Log.d(TAG, "Initializing map camera at real location with visible area padding: $userLatitude, $userLongitude")
+        }
+        
+        // Update camera when coordinates change - center in visible area
+        LaunchedEffect(userLatitude, userLongitude) {
+            Log.d(TAG, "User coordinates changed, updating camera with visible area padding: $userLatitude, $userLongitude")
+            // Use animateCamera with bottom padding for visible area centering
+            val success = animateCamera(
+                latitude = userLatitude,
+                longitude = userLongitude,
+                zoom = 16.0,
+                duration = 1000,
+                paddingBottom = 300f // Same padding as FitMapToOrdersUseCase
+            )
+            if (!success) {
+                Log.w(TAG, "Failed to animate camera to user location")
             }
         }
         
         // Store the viewport state for external control
         currentViewportState = viewportState
         
-        // Render the Mapbox map
+        // Render the Mapbox map with real location
         MapboxMap(
             modifier = modifier.fillMaxSize(),
             style = { MapStyle(style = if (isDarkMode) Style.DARK else Style.OUTDOORS) },
@@ -129,7 +169,7 @@ class MapboxProvider @Inject constructor(
         ) {
             // Add user location marker (blue)
             CircleAnnotation(
-                point = Point.fromLngLat(locationData.longitude, locationData.latitude)
+                point = Point.fromLngLat(locationData?.longitude ?: userLongitude, locationData?.latitude ?: userLatitude)
             ) {
                 circleRadius = 12.0
                 circleColor = userLocationColor
@@ -137,7 +177,7 @@ class MapboxProvider @Inject constructor(
                 circleStrokeColor = Color.White
                 
                 interactionsState.onClicked {
-                    Log.d(TAG, "Current location clicked at: ${locationData.latitude}, ${locationData.longitude}")
+                    Log.d(TAG, "Current location clicked at: ${locationData?.latitude ?: userLatitude}, ${locationData?.longitude ?: userLongitude}")
                     true
                 }
             }
@@ -166,7 +206,7 @@ class MapboxProvider @Inject constructor(
         
         // Log when location changes
         LaunchedEffect(locationData) {
-            Log.d(TAG, "User location updated: ${locationData.latitude}, ${locationData.longitude} - Only marker position updated, not camera")
+            Log.d(TAG, "User location updated: ${locationData?.latitude}, ${locationData?.longitude} - Only marker position updated, not camera")
         }
     }
     
@@ -189,7 +229,7 @@ class MapboxProvider @Inject constructor(
     override fun centerOnUserLocation(): Boolean {
         val currentLocation = locationManager.currentLocation.value
         
-        if (currentLocation.isFromUser) {
+        if (currentLocation?.isFromUser == true) {
             // Enable auto-follow
             enableAutoFollow()
             

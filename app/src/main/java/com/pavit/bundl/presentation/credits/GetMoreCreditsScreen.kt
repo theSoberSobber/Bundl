@@ -56,8 +56,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pavit.bundl.domain.model.CreditPackage
 import com.pavit.bundl.domain.payment.PaymentService
-import com.cashfree.pg.core.api.callback.CFCheckoutResponseCallback
-import com.cashfree.pg.core.api.utils.CFErrorResponse
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.launch
@@ -73,13 +71,17 @@ fun PaymentCallbackHandler(
     
     DisposableEffect(Unit) {
         activity?.let {
-            val callback = object : CFCheckoutResponseCallback {
-                override fun onPaymentVerify(orderId: String) {
+            val callback = object : PaymentService.PaymentCallback {
+                override fun onPaymentSuccess(orderId: String, credits: Int) {
                     viewModel.onPaymentCompleted(true, null)
                 }
                 
-                override fun onPaymentFailure(cfErrorResponse: CFErrorResponse, orderId: String) {
-                    viewModel.onPaymentCompleted(false, cfErrorResponse.message)
+                override fun onPaymentFailure(error: String) {
+                    viewModel.onPaymentCompleted(false, error)
+                }
+                
+                override fun onPaymentCancelled() {
+                    viewModel.onPaymentCompleted(false, "Payment cancelled")
                 }
             }
             
@@ -99,6 +101,7 @@ fun GetMoreCreditsScreen(
     navController: NavController,
     viewModel: CreditsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val state by viewModel.state.collectAsState()
     var selectedPackage by remember { mutableStateOf<CreditPackage?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -140,18 +143,23 @@ fun GetMoreCreditsScreen(
             TopAppBar(
                 title = { Text("Get More Credits") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            // If this screen is hosted in its own Activity (CreditActivity), finish it
+                            (context as? android.app.Activity)?.finish()
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack, 
-                            contentDescription = "Back",
-                            tint = Color.White
+                            contentDescription = "Back"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1C1C1C),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -159,8 +167,8 @@ fun GetMoreCreditsScreen(
             SnackbarHost(snackbarHostState) { data ->
                 Snackbar(
                     modifier = Modifier.padding(16.dp),
-                    containerColor = Color(0xFF2C2C2C),
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Text(data.visuals.message)
                 }
@@ -196,7 +204,7 @@ fun GetMoreCreditsScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF2C2C2C)
+                            containerColor = MaterialTheme.colorScheme.surface
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -207,7 +215,7 @@ fun GetMoreCreditsScreen(
                             Text(
                                 text = "Your Credits",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Medium
                             )
                             
@@ -226,7 +234,7 @@ fun GetMoreCreditsScreen(
                                 Text(
                                     text = "${state.currentCredits}",
                                     style = MaterialTheme.typography.headlineLarge,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -238,7 +246,7 @@ fun GetMoreCreditsScreen(
                     Text(
                         text = "Select a Package",
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Start
@@ -288,7 +296,7 @@ fun GetMoreCreditsScreen(
                                             Text(
                                                 text = pack.name,
                                                 style = MaterialTheme.typography.titleMedium,
-                                                color = Color.White,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 fontWeight = FontWeight.Bold
                                             )
                                             
@@ -303,7 +311,7 @@ fun GetMoreCreditsScreen(
                                                 Text(
                                                     text = "${pack.credits} credits",
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.White
+                                                    color = MaterialTheme.colorScheme.onSurface
                                                 )
                                             }
                                         }
@@ -354,7 +362,8 @@ fun GetMoreCreditsScreen(
                             .height(56.dp),
                         enabled = (selectedPackage != null && !state.isProcessing && !state.isVerifying),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             disabledContainerColor = Color.Gray
                         ),
                         shape = RoundedCornerShape(8.dp)
@@ -362,7 +371,7 @@ fun GetMoreCreditsScreen(
                         when {
                             state.isProcessing -> {
                                 CircularProgressIndicator(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -371,12 +380,12 @@ fun GetMoreCreditsScreen(
                                     text = "Processing...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                             state.isVerifying -> {
                                 CircularProgressIndicator(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -385,7 +394,7 @@ fun GetMoreCreditsScreen(
                                     text = "Verifying Payment...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                             else -> {
@@ -393,7 +402,7 @@ fun GetMoreCreditsScreen(
                                     text = selectedPackage?.let { "Buy ${it.credits} Credits for ₹${it.price}" } ?: "Select a Package",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
@@ -431,7 +440,7 @@ fun GetMoreCreditsScreen(
                                             text = "Verifying Payment",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.White
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         
                                         Spacer(modifier = Modifier.height(8.dp))

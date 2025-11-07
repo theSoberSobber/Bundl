@@ -12,35 +12,49 @@ plugins {
 
 android {
     namespace = "com.pavit.bundl"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.pavit.bundl"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 12
+        versionName = "(12) 1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Load RevenueCat API key from local.properties
+        val localPropertiesFile = rootProject.file("local.properties")
+        val localProperties = Properties()
+        if (localPropertiesFile.exists()) {
+            localProperties.load(FileInputStream(localPropertiesFile))
+        }
+        
+        val revenueCatApiKey = localProperties.getProperty("REVENUECAT_API_KEY") ?: "your_revenuecat_api_key_here"
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatApiKey\"")
+        
+        val mapboxAccessToken = localProperties.getProperty("MAPBOX_ACCESS_TOKEN") ?: "your_mapbox_access_token_here"
+        buildConfigField("String", "MAPBOX_ACCESS_TOKEN", "\"$mapboxAccessToken\"")
+        
+        // Create string resource for Mapbox (required by SDK)
+        resValue("string", "mapbox_access_token", mapboxAccessToken)
     }
 
     signingConfigs {
         create("release") {
             val keystorePropertiesFile = rootProject.file("keystore.properties")
-            val keystoreProperties = Properties()
-
-            if (keystorePropertiesFile.exists()) {
-                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-            } else {
-                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+            require(keystorePropertiesFile.exists()) {
+                "⚠️ keystore.properties file is missing. Please create it in the project root."
             }
+
+            val keystoreProperties = Properties().apply {
+                load(FileInputStream(keystorePropertiesFile))
+            }
+
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
         }
     }
 
@@ -68,6 +82,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -139,8 +154,11 @@ dependencies {
     implementation(libs.mapbox)
     implementation(libs.mapbox.compose)
 
-    // Cashfree Payment Gateway SDK
-    implementation(libs.cashfree)
+    // RevenueCat SDK
+    implementation(libs.revenuecat)
+    
+    // Google Play Billing (for RevenueCat)
+    implementation(libs.billing.ktx)
 
     // Testing
     testImplementation(libs.junit)

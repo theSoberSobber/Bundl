@@ -1,0 +1,19 @@
+# This file contains local configuration for the project
+# Add your API keys here (this file should NOT be committed to version control)
+
+# RevenueCat Google Play API Key (required)
+# You can find your RevenueCat API key in the RevenueCat dashboard under Project Settings
+REVENUECAT_API_KEY=your_revenuecat_google_play_api_key_here
+
+# Mapbox Access Token (required)
+# You can find your Mapbox access token in the Mapbox dashboard under Access Tokens
+MAPBOX_ACCESS_TOKEN=your_mapbox_access_token_here
+
+# Note: 
+# - Replace the placeholder values with your actual API keys
+# - RevenueCat API key should start with "goog_" (this is the PUBLIC API key, not the secret key)
+# - Mapbox access token should start with "pk." (this is the public access token)
+# 
+# Examples:
+# REVENUECAT_API_KEY=goog_ABC123def456GHI789jkl
+# MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoibWVzb3NhbiIsImEiOiJjbWFmYzU1MzUwMTN2Mm1xdDJzdThveTFuIn0.bH1NLhtdFMDRZsXnRO-tqA

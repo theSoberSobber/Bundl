@@ -16,13 +16,19 @@ interface MapProvider {
      * @param orders List of orders to display on the map
      * @param onMarkerClick Callback for when a marker is clicked
      * @param isDarkMode Whether to use dark mode styling for the map
+     * @param shouldRenderMap Whether to render the map or show loading state
+     * @param userLatitude User's current latitude (for initial positioning)
+     * @param userLongitude User's current longitude (for initial positioning)
      */
     @Composable
     fun RenderMap(
         modifier: Modifier,
         orders: List<Order>,
         onMarkerClick: (Order) -> Unit,
-        isDarkMode: Boolean
+        isDarkMode: Boolean,
+        shouldRenderMap: Boolean = true,
+        userLatitude: Double = 12.9716,
+        userLongitude: Double = 77.5946
     )
     
     /**

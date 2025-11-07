@@ -57,7 +57,10 @@ data class HomeState(
     val secondsUntilRefresh: Int = 30,
     val errorMessage: String? = null,
     val userStats: UserStats? = null,
-    val isLoadingOrders: Boolean = false
+    val isLoadingOrders: Boolean = false,
+    val hasRealLocation: Boolean = false,
+    val userLatitude: Double = 12.9716,
+    val userLongitude: Double = 77.5946
 )
 
 @HiltViewModel
@@ -101,6 +104,25 @@ class HomeViewModel @Inject constructor(
     }
     
     init {
+        // Initialize with current location if available
+        viewModelScope.launch {
+            // Get current location from LocationManager at startup
+            val currentLocation = getCurrentLocationUseCase.asFlow().first()
+            if (currentLocation.isFromUser) {
+                Log.d(TAG, "HomeViewModel initializing with real location: ${currentLocation.latitude}, ${currentLocation.longitude}")
+                initialLocation = currentLocation
+                _state.update { 
+                    it.copy(
+                        hasRealLocation = true,
+                        userLatitude = currentLocation.latitude,
+                        userLongitude = currentLocation.longitude
+                    )
+                }
+            } else {
+                Log.d(TAG, "HomeViewModel initializing with default location, will wait for real location")
+            }
+        }
+        
         // Get FCM token and register device if user is logged in
         viewModelScope.launch {
             checkLoginStatusUseCase().fold(
@@ -193,6 +215,16 @@ class HomeViewModel @Inject constructor(
                 if (locationData.isFromUser) {
                     // Store updated location
                     initialLocation = locationData
+                    
+                    // Update state to indicate we have real location and store coordinates
+                    _state.update { 
+                        it.copy(
+                            hasRealLocation = true,
+                            userLatitude = locationData.latitude,
+                            userLongitude = locationData.longitude
+                        )
+                    }
+                    Log.d(TAG, "Updated state: hasRealLocation=true, coordinates=(${locationData.latitude}, ${locationData.longitude})")
                     
                     // Fetch orders at new location
                     Log.d(TAG, "Location updated to: ${locationData.latitude}, ${locationData.longitude}. Fetching orders at new location.")

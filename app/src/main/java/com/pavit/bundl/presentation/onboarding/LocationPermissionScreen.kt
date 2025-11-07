@@ -40,24 +40,10 @@ fun LocationPermissionScreen(
         val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         
         if (fineLocationGranted || coarseLocationGranted) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                permissionStep = PermissionStep.NeedBackgroundLocation
-            } else {
-                // Android 9 and below - basic location is enough
-                onPermissionGranted()
-            }
-        } else {
-            permissionStep = PermissionStep.BasicLocationDenied
-        }
-    }
-    
-    val backgroundLocationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+            // Foreground location granted - that's all we need with foreground service!
             onPermissionGranted()
         } else {
-            permissionStep = PermissionStep.BackgroundLocationDenied
+            permissionStep = PermissionStep.BasicLocationDenied
         }
     }
     
@@ -96,35 +82,12 @@ fun LocationPermissionScreen(
                 )
             }
             
-            PermissionStep.NeedBackgroundLocation -> {
-                BackgroundLocationPermissionContent(
-                    onAllowClick = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        }
-                    },
-                    onOpenSettingsClick = {
-                        openLocationSettings(context)
-                    }
-                )
-            }
-            
             PermissionStep.BasicLocationDenied -> {
                 LocationDeniedContent(
                     title = "Location Access Required",
                     message = "Bundl needs location access to find orders nearby. Please enable location permissions in settings.",
                     onOpenSettingsClick = {
                         openAppSettings(context)
-                    }
-                )
-            }
-            
-            PermissionStep.BackgroundLocationDenied -> {
-                LocationDeniedContent(
-                    title = "Always Allow Location",
-                    message = "For the best experience, please set location access to 'Allow all the time' in your device settings. This helps us show you relevant orders even when the app is closed.",
-                    onOpenSettingsClick = {
-                        openLocationSettings(context)
                     }
                 )
             }
@@ -165,59 +128,48 @@ private fun BasicLocationPermissionContent(
         textAlign = TextAlign.Start
     )
 
-    Spacer(modifier = Modifier.height(32.dp))
+    Spacer(modifier = Modifier.height(24.dp))
+    
+    // Prominent notification feature card
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "🔔",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            Column {
+                Text(
+                    text = "Get Notified of Nearby Orders",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Select 'While using the app' to receive notifications when orders appear near you!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
 
     Button(
         onClick = onAllowClick,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text("Allow Location Access")
-    }
-}
-
-@Composable
-private fun BackgroundLocationPermissionContent(
-    onAllowClick: () -> Unit,
-    onOpenSettingsClick: () -> Unit
-) {
-    Text(
-        text = "Allow All The Time",
-        style = MaterialTheme.typography.headlineMedium,
-        textAlign = TextAlign.Center
-    )
-
-    Spacer(modifier = Modifier.height(16.dp))
-
-    Text(
-        text = "For the best experience, we need access to your location even when the app is closed.",
-        style = MaterialTheme.typography.bodyLarge,
-        textAlign = TextAlign.Center
-    )
-    
-    Spacer(modifier = Modifier.height(12.dp))
-    
-    Text(
-        text = "This helps us:\n• Notify you about nearby orders\n• Keep your location updated for deliveries\n• Provide location-based features",
-        style = MaterialTheme.typography.bodyMedium,
-        textAlign = TextAlign.Start
-    )
-
-    Spacer(modifier = Modifier.height(32.dp))
-
-    Button(
-        onClick = onAllowClick,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Allow All The Time")
-    }
-    
-    Spacer(modifier = Modifier.height(12.dp))
-    
-    TextButton(
-        onClick = onOpenSettingsClick,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Open Location Settings")
     }
 }
 
@@ -253,9 +205,7 @@ private fun LocationDeniedContent(
 
 private enum class PermissionStep {
     NeedBasicLocation,
-    NeedBackgroundLocation, 
     BasicLocationDenied,
-    BackgroundLocationDenied,
     AllPermissionsGranted
 }
 
@@ -274,20 +224,7 @@ private fun getInitialPermissionStep(context: Context): PermissionStep {
         return PermissionStep.NeedBasicLocation
     }
     
-    // Check background location for Android 10+
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        val hasBackgroundLocation = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        
-        return if (hasBackgroundLocation) {
-            PermissionStep.AllPermissionsGranted
-        } else {
-            PermissionStep.NeedBackgroundLocation
-        }
-    }
-    
-    // Android 9 and below - basic location is enough
+    // Foreground location is all we need - foreground service handles the rest!
     return PermissionStep.AllPermissionsGranted
 }
 
@@ -295,10 +232,5 @@ private fun openAppSettings(context: Context) {
     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
         data = Uri.fromParts("package", context.packageName, null)
     }
-    context.startActivity(intent)
-}
-
-private fun openLocationSettings(context: Context) {
-    val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
     context.startActivity(intent)
 } 
